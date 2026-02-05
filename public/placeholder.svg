@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Background -->
+  <rect width="200" height="200" fill="#e5e7eb"/>
+  
+  <!-- Image icon -->
+  <circle cx="100" cy="70" r="20" fill="#d1d5db"/>
+  
+  <!-- Mountain shapes -->
+  <polygon points="30,130 70,90 110,130" fill="#d1d5db"/>
+  <polygon points="90,130 130,100 170,130" fill="#9ca3af"/>
+  
+  <!-- Bottom bar -->
+  <rect y="130" width="200" height="70" fill="#f3f4f6"/>
+</svg>

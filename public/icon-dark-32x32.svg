@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Outer circle background -->
+  <circle cx="100" cy="100" r="95" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+  
+  <!-- Inner decorative circle -->
+  <circle cx="100" cy="100" r="85" fill="none" stroke="#e0e0e0" stroke-width="1"/>
+  
+  <!-- Cardinal directions -->
+  <text x="100" y="25" text-anchor="middle" font-size="14" font-weight="bold" fill="#1a1a1a">N</text>
+  <text x="175" y="105" text-anchor="middle" font-size="14" font-weight="bold" fill="#1a1a1a">E</text>
+  <text x="100" y="180" text-anchor="middle" font-size="14" font-weight="bold" fill="#1a1a1a">S</text>
+  <text x="25" y="105" text-anchor="middle" font-size="14" font-weight="bold" fill="#1a1a1a">W</text>
+  
+  <!-- North pointer (red) -->
+  <polygon points="100,30 95,60 100,50 105,60" fill="#dc2626" stroke="#991b1b" stroke-width="1"/>
+  
+  <!-- East pointer (blue) -->
+  <polygon points="170,100 140,95 150,100 140,105" fill="#2563eb" stroke="#1e40af" stroke-width="1"/>
+  
+  <!-- South pointer (white with stroke) -->
+  <polygon points="100,170 95,140 100,150 105,140" fill="#ffffff" stroke="#1a1a1a" stroke-width="1.5"/>
+  
+  <!-- West pointer (white with stroke) -->
+  <polygon points="30,100 60,95 50,100 60,105" fill="#ffffff" stroke="#1a1a1a" stroke-width="1.5"/>
+  
+  <!-- Center circle -->
+  <circle cx="100" cy="100" r="12" fill="#1a1a1a" stroke="#ffffff" stroke-width="2"/>
+  
+  <!-- Center dot -->
+  <circle cx="100" cy="100" r="5" fill="#ffffff"/>
+  
+  <!-- Tick marks -->
+  <g stroke="#1a1a1a" stroke-width="1.5">
+    <line x1="100" y1="15" x2="100" y2="25"/>
+    <line x1="175" y1="100" x2="185" y2="100"/>
+    <line x1="100" y1="185" x2="100" y2="175"/>
+    <line x1="25" y1="100" x2="15" y2="100"/>
+  </g>
+  
+  <!-- Subtle decoration lines -->
+  <g stroke="#d0d0d0" stroke-width="0.5" opacity="0.5">
+    <line x1="100" y1="20" x2="100" y2="35"/>
+    <line x1="165" y1="100" x2="180" y2="100"/>
+    <line x1="100" y1="165" x2="100" y2="180"/>
+    <line x1="35" y1="100" x2="20" y2="100"/>
+  </g>
+</svg>

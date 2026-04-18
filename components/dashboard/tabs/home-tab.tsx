@@ -32,6 +32,8 @@ export function HomeTab() {
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const dcRef = useRef<RTCDataChannel | null>(null)
   const micTrackRef = useRef<MediaStreamTrack | null>(null)
+  const lastResponseId = useRef<string | null>(null)
+  const lastUserItemId = useRef<string | null>(null)
 
   const generateSuggestions = async (chatMessages: Message[]) => {
     try {
@@ -150,6 +152,10 @@ export function HomeTab() {
         if (event.type === 'response.audio.delta') setAvatarStatus('speaking')
         if (event.type === 'response.done') {
           setAvatarStatus('idle')
+          const responseId = event.response?.id
+          if (responseId && responseId === lastResponseId.current) return
+          lastResponseId.current = responseId
+          
           const aiText = event.response?.output?.[0]?.content?.[0]?.transcript || ''
           if (aiText) {
             const assistantMessage: Message = {
@@ -169,6 +175,10 @@ export function HomeTab() {
           }
         }
         if (event.type === 'conversation.item.created' && event.item?.role === 'user') {
+          const itemId = event.item?.id
+          if (itemId && itemId === lastUserItemId.current) return
+          lastUserItemId.current = itemId
+          
           const userText = event.item?.content?.[0]?.transcript || ''
           if (userText) {
             const userMessage: Message = {

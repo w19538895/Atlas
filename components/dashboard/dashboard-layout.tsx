@@ -21,8 +21,10 @@ import {
   Compass,
   LogOut,
   Settings,
+  MapPin,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { useLocation } from "@/lib/LocationContext";
 import { HomeTab } from "./tabs/home-tab";
 import { VisionTab } from "./tabs/vision-tab";
 import { ChatTab } from "./tabs/chat-tab";
@@ -46,6 +48,7 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ onLogout }: DashboardLayoutProps) {
   const [activeTab, setActiveTab] = useState<TabId>("home");
   const { user } = useAuth();
+  const { locationName, isLocating, locationError } = useLocation();
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -97,7 +100,19 @@ export function DashboardLayout({ onLogout }: DashboardLayoutProps) {
         </nav>
 
         {/* User Section */}
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-border space-y-3">
+          {/* Location Badge */}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 text-xs text-muted-foreground">
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
+              {isLocating && "📍 Locating..."}
+              {locationError && "📍 Location off"}
+              {locationName && !isLocating && locationName}
+              {!locationName && !isLocating && !locationError && "📍 Location off"}
+            </span>
+          </div>
+
+          {/* User Profile */}
           <div className="flex items-center gap-3 p-3 rounded-xl bg-muted">
             <Avatar className="h-10 w-10">
               <AvatarImage src={user?.avatar || "/placeholder.svg"} />

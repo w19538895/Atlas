@@ -14,11 +14,20 @@ const SYSTEM_PROMPT = `You are Atlas, an enthusiastic and knowledgeable AI tour 
 
 export async function sendChatMessage(
   userMessage: string,
-  conversationHistory: ChatMessage[]
+  conversationHistory: ChatMessage[],
+  locationName?: string | null,
+  latitude?: number | null,
+  longitude?: number | null
 ): Promise<string> {
   try {
+    // Build system prompt with location if available
+    let systemPrompt = SYSTEM_PROMPT;
+    if (locationName && latitude && longitude) {
+      systemPrompt += `\n\nUser is currently near ${locationName} (lat: ${latitude}, lon: ${longitude}). Use this to give more accurate and relevant travel recommendations.`;
+    }
+
     const messages: ChatMessage[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
       ...conversationHistory,
       { role: 'user', content: userMessage },
     ];

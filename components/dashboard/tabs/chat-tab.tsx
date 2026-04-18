@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Send, Mic, Compass, MapPin, AlertCircle } from "lucide-react";
 import { sendChatMessage, ChatMessage } from "@/lib/openai-service";
+import { useLocation } from "@/lib/LocationContext";
 
 interface Message {
   id: string;
@@ -31,7 +32,7 @@ const initialMessages: Message[] = [
   },
 ];
 
-const quickReplies = [
+const defaultSuggestions = [
   "What are the best restaurants nearby?",
   "Tell me about local culture",
   "Best time to visit this area?",
@@ -46,8 +47,11 @@ export function ChatTab() {
   const [landmarkContext, setLandmarkContext] = useState<{ name: string } | null>({
     name: "Eiffel Tower",
   });
+  const [currentTopic, setCurrentTopic] = useState<string>("");
+  const [suggestions, setSuggestions] = useState<string[]>(defaultSuggestions);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { latitude, longitude, locationName } = useLocation();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -56,6 +60,106 @@ export function ChatTab() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const detectTopic = async (chatMessages: Message[]) => {
+    try {
+      // Get last 3-4 messages
+      const lastMessages = chatMessages.slice(-4);
+      
+      if (lastMessages.length === 0) {
+        setCurrentTopic("");
+        return;
+      }
+
+      // Format messages for topic detection
+      const conversationForTopic = lastMessages
+        .map((msg) => `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`)
+        .join("\n");
+
+      // Call OpenAI with topic detection prompt
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a topic detector. Analyze the conversation and return ONLY a short 2-4 word topic label describing what travel topic is being discussed. If no clear travel topic exists return empty string. Return nothing else, no explanation, just the label or empty string.",
+            },
+            {
+              role: "user",
+              content: conversationForTopic,
+            },
+          ],
+        }),
+      });
+
+      const data = await response.json();
+      const topic = data.message?.trim() || "";
+      setCurrentTopic(topic);
+    } catch (error) {
+      console.error("Topic detection error:", error);
+      // Silently fail - don't show error to user
+    }
+  };
+
+  const generateSuggestions = async (chatMessages: Message[]) => {
+    try {
+      // Get last 3-4 messages
+      const lastMessages = chatMessages.slice(-4);
+      
+      if (lastMessages.length === 0) {
+        setSuggestions(defaultSuggestions);
+        return;
+      }
+
+      // Format messages for suggestion generation
+      const conversationForSuggestions = lastMessages
+        .map((msg) => `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`)
+        .join("\n");
+
+      // Call OpenAI with suggestion generation prompt
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a travel assistant. Based on the conversation so far generate exactly 3 short follow up question suggestions the user might want to ask next. Each suggestion must be under 8 words. Return ONLY a valid JSON array of 3 strings like this: [\"suggestion 1\", \"suggestion 2\", \"suggestion 3\"] — nothing else, no explanation, no markdown",
+            },
+            {
+              role: "user",
+              content: conversationForSuggestions,
+            },
+          ],
+        }),
+      });
+
+      const data = await response.json();
+      const responseText = data.message?.trim() || "";
+      
+      // Parse JSON safely
+      try {
+        const parsedSuggestions = JSON.parse(responseText);
+        // Validate that it's an array of 3 strings
+        if (Array.isArray(parsedSuggestions) && parsedSuggestions.length === 3 && parsedSuggestions.every((s: any) => typeof s === "string")) {
+          setSuggestions(parsedSuggestions);
+        } else {
+          // Keep previous suggestions if parsing fails
+          console.warn("Invalid suggestions format received");
+        }
+      } catch (parseError) {
+        // Keep previous suggestions if JSON parsing fails
+        console.warn("Failed to parse suggestions JSON", parseError);
+      }
+    } catch (error) {
+      console.error("Suggestion generation error:", error);
+      // Silently fail - keep previous suggestions
+    }
+  };
 
   const sendMessage = async (content: string) => {
     if (!content.trim()) return;
@@ -85,7 +189,10 @@ export function ChatTab() {
       // Get AI response
       const response = await sendChatMessage(
         content.trim(),
-        conversationHistory
+        conversationHistory,
+        locationName,
+        latitude,
+        longitude
       );
 
       const assistantMessage: Message = {
@@ -95,7 +202,14 @@ export function ChatTab() {
         timestamp: new Date(),
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      const updatedMessages = [...messages, userMessage, assistantMessage];
+      setMessages(updatedMessages);
+      
+      // Detect topic and generate suggestions after AI response
+      setTimeout(() => {
+        detectTopic(updatedMessages);
+        generateSuggestions(updatedMessages);
+      }, 0);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to get response. Please try again.";
       setError(errorMessage);
@@ -114,6 +228,13 @@ export function ChatTab() {
     sendMessage(reply);
   };
 
+  const handleClearChat = () => {
+    setMessages(initialMessages);
+    setCurrentTopic("");
+    setSuggestions(defaultSuggestions);
+    setLandmarkContext(null);
+  };
+
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
@@ -121,17 +242,17 @@ export function ChatTab() {
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] lg:h-[calc(100vh-5rem)]">
       {/* Context Banner */}
-      {landmarkContext && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 border-b border-primary/20">
+      {currentTopic && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 border-b border-primary/20 animate-fade-in">
           <MapPin className="w-4 h-4 text-primary" />
           <span className="text-sm text-foreground">
-            Discussing: <strong>{landmarkContext.name}</strong>
+            Discussing: <strong>{currentTopic}</strong>
           </span>
           <button
-            onClick={() => setLandmarkContext(null)}
+            onClick={() => setCurrentTopic("")}
             className="ml-auto text-xs text-muted-foreground hover:text-foreground"
           >
-            Clear context
+            Clear
           </button>
         </div>
       )}
@@ -176,12 +297,6 @@ export function ChatTab() {
                 message.role === "user" && "items-end"
               )}
             >
-              {message.context && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-                  <MapPin className="w-3 h-3" />
-                  Re: {message.context.name}
-                </div>
-              )}
               <div
                 className={cn(
                   "rounded-2xl px-4 py-3",
@@ -226,7 +341,7 @@ export function ChatTab() {
         {/* Quick Replies */}
         {!isTyping && messages.length > 0 && messages[messages.length - 1].role === "assistant" && (
           <div className="flex flex-wrap gap-2 pt-2">
-            {quickReplies.map((reply) => (
+            {suggestions.map((reply) => (
               <button
                 key={reply}
                 onClick={() => handleQuickReply(reply)}

@@ -10,6 +10,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Send, Mic, Compass, MapPin, AlertCircle } from "lucide-react";
 import { sendChatMessage, ChatMessage } from "@/lib/openai-service";
 import { useLocation } from "@/lib/LocationContext";
+import { auth, db } from "@/firebase.config";
+import { setDoc, doc } from "firebase/firestore";
 
 interface Message {
   id: string;
@@ -39,8 +41,14 @@ const defaultSuggestions = [
   "Hidden gems nearby",
 ];
 
-export function ChatTab() {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+export function ChatTab({ onTabChange }: { onTabChange?: (tab: string) => void }) {
+  // Check for pending landmark synchronously to avoid flicker
+  const pendingLandmark = typeof window !== 'undefined' 
+    ? localStorage.getItem('visionLandmark') 
+    : null;
+
+  // Start with empty messages if landmark pending, otherwise show default hello message
+  const [messages, setMessages] = useState<Message[]>(pendingLandmark ? [] : initialMessages);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,9 +57,12 @@ export function ChatTab() {
   });
   const [currentTopic, setCurrentTopic] = useState<string>("");
   const [suggestions, setSuggestions] = useState<string[]>(defaultSuggestions);
+  const [sessionId, setSessionId] = useState<string>(Date.now().toString());
+  const [hasProcessedLandmark, setHasProcessedLandmark] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { latitude, longitude, locationName } = useLocation();
+  const currentUser = auth.currentUser;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -60,6 +71,118 @@ export function ChatTab() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    // Check for landmark data from vision tab every time tab becomes visible
+    const checkForLandmark = () => {
+      const landmarkData = localStorage.getItem('visionLandmark');
+      if (landmarkData && !hasProcessedLandmark) {
+        try {
+          const { name, location } = JSON.parse(landmarkData);
+          localStorage.removeItem('visionLandmark'); // Delete immediately after reading
+          
+          setCurrentTopic(name);
+          setHasProcessedLandmark(true);
+          
+          // Generate welcome message from OpenAI about the landmark
+          generateLandmarkWelcome(name, location);
+        } catch (error) {
+          console.error("Error parsing landmark data:", error);
+        }
+      }
+    };
+
+    // Check on mount
+    checkForLandmark();
+
+    // Check when page becomes visible (tab is switched back)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkForLandmark();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [hasProcessedLandmark]);
+
+  const generateLandmarkWelcome = async (landmarkName: string, landmarkLocation: string) => {
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "system",
+              content: `You are a warm and enthusiastic travel guide. Generate a brief 2-3 sentence welcome message about ${landmarkName} in ${landmarkLocation}. Be inviting and encourage the user to ask questions about this landmark. Keep it conversational and friendly.`,
+            },
+            {
+              role: "user",
+              content: `Tell me about ${landmarkName}`,
+            },
+          ],
+        }),
+      });
+
+      const data = await response.json();
+      const welcomeMessage = data.message?.trim() || "";
+
+      if (welcomeMessage) {
+        // Replace initial messages with landmark welcome only (skip default welcome)
+        const welcomeMsg: Message = {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: welcomeMessage,
+          timestamp: new Date(),
+        };
+
+        setMessages([welcomeMsg]);
+
+        // Generate landmark-specific suggestions
+        setTimeout(() => {
+          generateLandmarkSuggestions([welcomeMsg], landmarkName);
+        }, 0);
+      }
+    } catch (error) {
+      console.error("Error generating landmark welcome:", error);
+    }
+  };
+
+  const generateLandmarkSuggestions = async (chatMessages: Message[], landmarkName: string) => {
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "system",
+              content: `You are a travel assistant. Generate exactly 4 short follow-up question suggestions specific to ${landmarkName} that a visitor might want to ask. Each suggestion must be under 8 words. Return ONLY a valid JSON array of 4 strings like this: ["suggestion 1", "suggestion 2", "suggestion 3", "suggestion 4"] — nothing else, no explanation, no markdown`,
+            },
+            {
+              role: "user",
+              content: `Generate questions about ${landmarkName}`,
+            },
+          ],
+        }),
+      });
+
+      const data = await response.json();
+      const responseText = data.message?.trim() || "";
+
+      try {
+        const parsedSuggestions = JSON.parse(responseText);
+        if (Array.isArray(parsedSuggestions) && parsedSuggestions.length === 4 && parsedSuggestions.every((s: any) => typeof s === "string")) {
+          setSuggestions(parsedSuggestions);
+        }
+      } catch (parseError) {
+        console.warn("Failed to parse landmark suggestions JSON", parseError);
+      }
+    } catch (error) {
+      console.error("Error generating landmark suggestions:", error);
+    }
+  };
 
   const detectTopic = async (chatMessages: Message[]) => {
     try {
@@ -161,6 +284,46 @@ export function ChatTab() {
     }
   };
 
+  const saveChatToFirestore = async (chatMessages: Message[]) => {
+    try {
+      // Only save if user is authenticated
+      if (!currentUser?.uid) {
+        console.warn("User not authenticated, skipping chat history save");
+        return;
+      }
+
+      if (chatMessages.length === 0) return;
+
+      // Get last user and AI messages
+      const lastUserMessage = [...chatMessages].reverse().find(msg => msg.role === "user")?.content || "";
+      const lastAIResponse = [...chatMessages].reverse().find(msg => msg.role === "assistant")?.content || "";
+
+      // Prepare document data
+      const chatData = {
+        userId: currentUser.uid,
+        messages: chatMessages.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+          timestamp: msg.timestamp instanceof Date ? msg.timestamp.toISOString() : msg.timestamp,
+        })),
+        lastMessage: lastUserMessage,
+        aiLastResponse: lastAIResponse,
+        topic: currentTopic || null,
+        location: locationName || null,
+        timestamp: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Save to Firestore using sessionId as document ID
+      await setDoc(doc(db, "chatHistory", sessionId), chatData);
+      
+      console.log("Chat history saved successfully");
+    } catch (error) {
+      console.error("Error saving chat to Firestore:", error);
+      // Silently fail - don't show error to user
+    }
+  };
+
   const sendMessage = async (content: string) => {
     if (!content.trim()) return;
 
@@ -205,8 +368,9 @@ export function ChatTab() {
       const updatedMessages = [...messages, userMessage, assistantMessage];
       setMessages(updatedMessages);
       
-      // Detect topic and generate suggestions after AI response
+      // Save chat to Firestore, detect topic, and generate suggestions after AI response
       setTimeout(() => {
+        saveChatToFirestore(updatedMessages);
         detectTopic(updatedMessages);
         generateSuggestions(updatedMessages);
       }, 0);
@@ -233,6 +397,7 @@ export function ChatTab() {
     setCurrentTopic("");
     setSuggestions(defaultSuggestions);
     setLandmarkContext(null);
+    setSessionId(Date.now().toString()); // Generate new sessionId for next conversation
   };
 
   const formatTime = (date: Date) => {

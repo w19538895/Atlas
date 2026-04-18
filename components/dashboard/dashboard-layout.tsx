@@ -55,9 +55,9 @@ export function DashboardLayout({ onLogout }: DashboardLayoutProps) {
       case "home":
         return <HomeTab />;
       case "vision":
-        return <VisionTab />;
+        return <VisionTab onTabChange={setActiveTab} />;
       case "chat":
-        return <ChatTab />;
+        return <ChatTab onTabChange={setActiveTab} />;
       case "history":
         return <HistoryTab />;
       case "profile":

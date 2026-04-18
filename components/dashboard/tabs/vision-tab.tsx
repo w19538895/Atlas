@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,28 +13,27 @@ import {
   Star,
   Lightbulb,
   MessageCircle,
-  Bookmark,
-  Share2,
+  Zap,
   X,
   Loader2,
   ImageIcon,
 } from "lucide-react";
+import { auth, db } from "@/firebase.config";
+import { addDoc, collection } from "firebase/firestore";
+import { useRouter } from "next/navigation";
 
 interface AnalysisResult {
   name: string;
   location: string;
-  country: string;
-  imageUrl: string;
   historicalFacts: string[];
   interestingDetails: string[];
   travelTips: string[];
+  error?: string;
 }
 
 const mockAnalysis: AnalysisResult = {
   name: "Eiffel Tower",
-  location: "Champ de Mars, Paris",
-  country: "France",
-  imageUrl: "https://images.unsplash.com/photo-1511739001486-6bfe10ce65f4?w=800&h=600&fit=crop",
+  location: "Champ de Mars, Paris, France",
   historicalFacts: [
     "Built between 1887-1889 for the 1889 World's Fair",
     "Named after engineer Gustave Eiffel, whose company designed the structure",
@@ -55,11 +54,61 @@ const mockAnalysis: AnalysisResult = {
   ],
 };
 
-export function VisionTab() {
+export function VisionTab({ onTabChange }: { onTabChange?: (tab: string) => void }) {
+  const router = useRouter();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const [cameraMode, setCameraMode] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [cameraError, setCameraError] = useState(false);
+  const currentUser = auth.currentUser;
+
+  // Initialize camera on component mount
+  useEffect(() => {
+    if (cameraMode && !uploadedImage) {
+      initializeCamera();
+    }
+
+    return () => {
+      // Cleanup: stop camera stream
+      if (videoRef.current?.srcObject) {
+        const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+        tracks.forEach(track => track.stop());
+      }
+    };
+  }, [cameraMode, uploadedImage]);
+
+  const initializeCamera = async () => {
+    try {
+      setCameraError(false);
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error("Camera permission denied:", err);
+      setCameraError(true);
+      setCameraMode(false); // Fall back to upload mode
+    }
+  };
+
+  const captureSnapshot = () => {
+    if (videoRef.current && canvasRef.current) {
+      const context = canvasRef.current.getContext("2d");
+      if (context) {
+        canvasRef.current.width = videoRef.current.videoWidth;
+        canvasRef.current.height = videoRef.current.videoHeight;
+        context.drawImage(videoRef.current, 0, 0);
+        const imageData = canvasRef.current.toDataURL("image/jpeg");
+        setUploadedImage(imageData);
+        analyzeImage(imageData);
+      }
+    }
+  };
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -90,26 +139,97 @@ export function VisionTab() {
   const processImage = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      setUploadedImage(e.target?.result as string);
-      analyzeImage();
+      const imageData = e.target?.result as string;
+      setUploadedImage(imageData);
+      analyzeImage(imageData);
     };
     reader.readAsDataURL(file);
   };
 
-  const analyzeImage = () => {
+  const analyzeImage = async (imageData: string) => {
     setIsAnalyzing(true);
     setAnalysisResult(null);
-    // Simulate API call
-    setTimeout(() => {
+
+    try {
+      // Convert base64 to just the data part
+      const base64Data = imageData.split(",")[1];
+      const mimeType = imageData.match(/:(.*?);/)?.[1] || "image/jpeg";
+
+      // Call vision API
+      const response = await fetch("/api/vision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageBase64: base64Data,
+          mimeType,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        setAnalysisResult({ error: data.error, name: "", location: "", historicalFacts: [], interestingDetails: [], travelTips: [] });
+      } else {
+        setAnalysisResult(data);
+        
+        // Auto-save to Firestore if user is authenticated
+        if (currentUser?.uid && data.name && data.location) {
+          saveToFirestore(data.name, data.location);
+        }
+      }
+    } catch (error) {
+      console.error("Analysis error:", error);
+      setAnalysisResult({ error: "Failed to analyze image", name: "", location: "", historicalFacts: [], interestingDetails: [], travelTips: [] });
+    } finally {
       setIsAnalyzing(false);
-      setAnalysisResult(mockAnalysis);
-    }, 2500);
+    }
+  };
+
+  const saveToFirestore = async (landmarkName: string, location: string) => {
+    try {
+      if (!currentUser?.uid) return;
+
+      await addDoc(collection(db, "visionHistory"), {
+        userId: currentUser.uid,
+        landmarkName,
+        location,
+        timestamp: new Date().toISOString(),
+      });
+
+      console.log("Landmark saved to history");
+    } catch (error) {
+      console.error("Error saving to Firestore:", error);
+    }
+  };
+
+  const handleChatAbout = () => {
+    if (analysisResult?.name) {
+      localStorage.setItem('visionLandmark', JSON.stringify({
+        name: analysisResult.name,
+        location: analysisResult.location
+      }));
+      if (onTabChange) {
+        onTabChange('chat');
+      } else {
+        router.push("/dashboard?tab=chat");
+      }
+    }
+  };
+
+  const handleTalkToAvatar = () => {
+    if (analysisResult?.name) {
+      localStorage.setItem("visionLandmark", analysisResult.name);
+      router.push("/dashboard?tab=home");
+    }
   };
 
   const resetUpload = () => {
     setUploadedImage(null);
     setAnalysisResult(null);
     setIsAnalyzing(false);
+    if (cameraMode) {
+      initializeCamera();
+    }
   };
 
   return (
@@ -122,54 +242,89 @@ export function VisionTab() {
       </div>
 
       {!uploadedImage ? (
-        /* Upload Zone */
+        /* Camera or Upload Zone */
         <Card className="max-w-2xl mx-auto">
           <CardContent className="p-6">
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={`
-                relative border-2 border-dashed rounded-2xl p-12 text-center transition-colors
-                ${isDragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}
-              `}
-            >
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              />
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Camera className="w-10 h-10 text-primary" />
+            {cameraMode && !cameraError ? (
+              /* Camera Mode */
+              <div className="space-y-4">
+                <div className="relative bg-black rounded-2xl overflow-hidden">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    className="w-full h-80 object-cover"
+                  />
                 </div>
-                <div>
-                  <p className="text-lg font-medium text-foreground mb-1">
-                    Point camera at landmark
-                  </p>
-                  <p className="text-sm text-muted-foreground">or drag and drop an image here</p>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={captureSnapshot}
+                    className="flex-1"
+                    disabled={isAnalyzing}
+                  >
+                    <Camera className="w-4 h-4 mr-2" />
+                    Capture
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setCameraMode(false)}
+                    className="flex-1 bg-transparent"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Instead
+                  </Button>
                 </div>
-                <Button variant="outline" className="mt-2 bg-transparent">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload Photo
-                </Button>
               </div>
-            </div>
+            ) : (
+              /* Upload Mode */
+              <div>
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`
+                    relative border-2 border-dashed rounded-2xl p-12 text-center transition-colors
+                    ${isDragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}
+                  `}
+                >
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Upload className="w-10 h-10 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-lg font-medium text-foreground mb-1">
+                        Drag and drop an image
+                      </p>
+                      <p className="text-sm text-muted-foreground">or click to select</p>
+                    </div>
+                    <Button variant="outline" className="mt-2 bg-transparent">
+                      <Upload className="w-4 h-4 mr-2" />
+                      Upload Photo
+                    </Button>
+                  </div>
+                </div>
 
-            {/* Demo Button */}
-            <div className="mt-6 text-center">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setUploadedImage(mockAnalysis.imageUrl);
-                  analyzeImage();
-                }}
-              >
-                <ImageIcon className="w-4 h-4 mr-2" />
-                Try Demo Image
-              </Button>
-            </div>
+                {/* Camera Mode Button */}
+                <div className="mt-6 text-center">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setCameraMode(true);
+                      setCameraError(false);
+                    }}
+                  >
+                    <Camera className="w-4 h-4 mr-2" />
+                    Use Camera
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -203,7 +358,7 @@ export function VisionTab() {
             </div>
           </Card>
 
-          {analysisResult && (
+          {analysisResult && !analysisResult.error && (
             <>
               {/* Landmark Name & Location */}
               <Card>
@@ -213,9 +368,7 @@ export function VisionTab() {
                   </CardTitle>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <MapPin className="w-4 h-4" />
-                    <span>
-                      {analysisResult.location}, {analysisResult.country}
-                    </span>
+                    <span>{analysisResult.location}</span>
                   </div>
                 </CardHeader>
               </Card>
@@ -234,7 +387,7 @@ export function VisionTab() {
                   </CardHeader>
                   <CardContent className="pt-0">
                     <ul className="space-y-2">
-                      {analysisResult.historicalFacts.map((fact, index) => (
+                      {analysisResult.historicalFacts?.map((fact, index) => (
                         <li
                           key={index}
                           className="flex items-start gap-2 text-sm text-muted-foreground"
@@ -259,7 +412,7 @@ export function VisionTab() {
                   </CardHeader>
                   <CardContent className="pt-0">
                     <ul className="space-y-2">
-                      {analysisResult.interestingDetails.map((detail, index) => (
+                      {analysisResult.interestingDetails?.map((detail, index) => (
                         <li
                           key={index}
                           className="flex items-start gap-2 text-sm text-muted-foreground"
@@ -284,7 +437,7 @@ export function VisionTab() {
                   </CardHeader>
                   <CardContent className="pt-0">
                     <ul className="grid gap-2 lg:grid-cols-2">
-                      {analysisResult.travelTips.map((tip, index) => (
+                      {analysisResult.travelTips?.map((tip, index) => (
                         <li
                           key={index}
                           className="flex items-start gap-2 text-sm text-muted-foreground"
@@ -300,23 +453,35 @@ export function VisionTab() {
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-3 justify-center">
-                <Button className="flex-1 sm:flex-none">
+                <Button className="flex-1 sm:flex-none" onClick={handleChatAbout}>
                   <MessageCircle className="w-4 h-4 mr-2" />
                   Chat about this
                 </Button>
-                <Button variant="outline" className="flex-1 sm:flex-none bg-transparent">
-                  <Bookmark className="w-4 h-4 mr-2" />
-                  Save to history
-                </Button>
-                <Button variant="outline" className="flex-1 sm:flex-none bg-transparent">
-                  <Share2 className="w-4 h-4 mr-2" />
-                  Share
+                <Button variant="outline" className="flex-1 sm:flex-none bg-transparent" onClick={handleTalkToAvatar}>
+                  <Zap className="w-4 h-4 mr-2" />
+                  Talk to AI Avatar
                 </Button>
               </div>
             </>
           )}
+
+          {analysisResult?.error && (
+            <Card className="border-destructive/50 bg-destructive/5">
+              <CardContent className="pt-6">
+                <p className="text-destructive text-center">{analysisResult.error}</p>
+                <div className="mt-4 text-center">
+                  <Button onClick={resetUpload} variant="outline">
+                    Try Another Image
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
+
+      {/* Hidden canvas for camera capture */}
+      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 }

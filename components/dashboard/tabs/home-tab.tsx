@@ -245,7 +245,7 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
 
     const recognition = new SpeechRecognition()
     recognitionRef.current = recognition
-    recognition.continuous = true
+    recognition.continuous = false
     recognition.lang = 'en-US'
     recognition.interimResults = false
     recognition.onstart = () => setAvatarStatus('listening')
@@ -348,11 +348,7 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onMouseDown={(e) => { e.preventDefault(); startListening() }}
-            onMouseUp={() => { if (recognitionRef.current) try { recognitionRef.current.stop() } catch {} }}
-            onMouseLeave={() => { if (recognitionRef.current) try { recognitionRef.current.stop() } catch {} }}
             onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); startListening() }}
-            onTouchEnd={(e) => { e.preventDefault(); if (recognitionRef.current) try { recognitionRef.current.stop() } catch {} }}
-            onTouchCancel={(e) => { e.preventDefault(); if (recognitionRef.current) try { recognitionRef.current.stop() } catch {} }}
             onContextMenu={(e) => e.preventDefault()}
             disabled={avatarStatus === 'speaking'}
             style={{
@@ -374,7 +370,7 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
               <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
               <path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/>
             </svg>
-            {avatarStatus === 'listening' ? 'Listening...' : avatarStatus === 'speaking' ? 'Speaking...' : 'Hold to Speak'}
+            {avatarStatus === 'listening' ? 'Listening...' : avatarStatus === 'speaking' ? 'Speaking...' : 'Tap to Speak'}
           </button>
 
           <button

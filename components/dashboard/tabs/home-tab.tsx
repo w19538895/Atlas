@@ -83,60 +83,80 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
     }
   }
 
-  // ── SPEAK ──
-  const speak = (text: string): Promise<void> => {
-    return new Promise((resolve) => {
-      window.speechSynthesis.cancel()
-      setTimeout(() => {
-        const utterance = new SpeechSynthesisUtterance(text)
-        utterance.volume = 1.0
-        utterance.rate = 0.92
-        utterance.onend = () => { setAvatarStatus('idle'); resolve() }
-        utterance.onerror = () => { setAvatarStatus('idle'); resolve() }
-        window.speechSynthesis.speak(utterance)
-      }, 100)
-    })
+  // ── TTS VIA OPENAI ──
+  const speakText = async (text: string) => {
+    try {
+      const clean = text
+        .replace(/\*\*/g, '')
+        .replace(/\*/g, '')
+        .replace(/#{1,6}\s/g, '')
+        .replace(/\d+\.\s/g, '')
+        .replace(/\n+/g, ' ')
+        .trim()
+
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: clean })
+      })
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const audio = new Audio(url)
+      
+      audio.onplay = () => setAvatarStatus('speaking')
+      audio.onended = () => { setAvatarStatus('idle'); URL.revokeObjectURL(url) }
+      audio.onerror = () => { setAvatarStatus('idle'); URL.revokeObjectURL(url) }
+      await audio.play()
+    } catch (err) {
+      console.error('TTS error:', err)
+      setAvatarStatus('idle')
+    }
   }
 
-  // ── HANDLE MESSAGE — exact same as chat-tab sendMessage + speak ──
+  // ── HANDLE MESSAGE ──
   const handleUserMessage = async (text: string) => {
     if (!text.trim()) return
     setAvatarStatus('thinking')
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: text,
-      timestamp: new Date()
-    }
-    const updatedMessages = [...messages, userMessage]
-    setMessages(updatedMessages)
+    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: text, timestamp: new Date() }
+    const updated = [...messages, userMsg]
+    setMessages(updated)
     try {
-      const response = await fetch('/api/chat', {
+      const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
-          systemPrompt: `You are Atlas, an enthusiastic and friendly AI travel guide. You ONLY answer travel related questions about landmarks, restaurants, attractions, history of places, transport and accommodation. If asked anything else politely redirect to travel topics. Keep responses under 4 sentences. Always end with a travel related question.${locationName ? ` User is currently near ${locationName}.` : ''}`
+          messages: updated.map(m => ({ role: m.role, content: m.content })),
+          systemPrompt: `You are Atlas, a friendly AI travel guide. Only answer travel questions. Always end with a question. Write in plain sentences only. Do not use any markdown, bullet points, numbered lists, bold, headers or special formatting. Just plain conversational text.${locationName ? ` User is near ${locationName}.` : ''}`
         })
       })
-      const data = await response.json()
-      const aiResponse = data.message || ''
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: aiResponse,
-        timestamp: new Date()
-      }
-      const finalMessages = [...updatedMessages, assistantMessage]
-      setMessages(finalMessages)
-      await speak(aiResponse)
-      setAvatarStatus('idle')
-      setTimeout(() => {
-        generateSuggestions(finalMessages)
-        saveAvatarHistory(finalMessages)
-      }, 0)
+      const data = await res.json()
+      const reply = data.message || ''
+      const aiMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: reply, timestamp: new Date() }
+      const final = [...updated, aiMsg]
+
+      // Don't set messages yet
+      await new Promise<void>((resolve) => {
+        fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: reply })
+        }).then(r => r.blob()).then(blob => {
+          const url = URL.createObjectURL(blob)
+          const audio = new Audio(url)
+          audio.onplay = () => {
+            setAvatarStatus('speaking')
+            setMessages(final)  // Show text exactly when audio starts
+            resolve()
+          }
+          audio.onended = () => { setAvatarStatus('idle'); URL.revokeObjectURL(url) }
+          audio.onerror = () => { setAvatarStatus('idle'); URL.revokeObjectURL(url); resolve() }
+          audio.play()
+        })
+      })
+
+      setTimeout(() => { generateSuggestions(final); saveAvatarHistory(final) }, 0)
     } catch (err) {
-      console.error('Avatar chat error:', err)
+      console.error(err)
       setAvatarStatus('idle')
     }
   }

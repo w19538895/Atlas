@@ -7,7 +7,7 @@ const openai = new OpenAI({
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages } = await req.json();
+    const { messages, systemPrompt } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -16,9 +16,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Build system message with critical plain text instruction
+    const systemMessage = systemPrompt 
+      ? `${systemPrompt}\n\nCRITICAL: Respond in plain sentences only. No markdown. No bullet points. No numbered lists. No bold. No headers. No special characters.`
+      : 'You are a helpful assistant. Respond in plain sentences only. No markdown. No bullet points. No numbered lists. No bold. No headers. No special characters.'
+
+    // Add system message to the beginning of messages array
+    const messagesWithSystem = [
+      { role: 'system', content: systemMessage },
+      ...messages
+    ]
+
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
-      messages: messages as any,
+      messages: messagesWithSystem as any,
       temperature: 0.7,
       max_tokens: 50,
     });

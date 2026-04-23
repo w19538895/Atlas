@@ -217,10 +217,13 @@ export function VisionTab({ onTabChange }: { onTabChange?: (tab: string) => void
   };
 
   const handleTalkToAvatar = () => {
-    if (analysisResult?.name) {
-      localStorage.setItem("visionLandmark", analysisResult.name);
-      router.push("/dashboard?tab=home");
+    if (analysisResult) {
+      localStorage.setItem('visionLandmark', JSON.stringify({
+        name: analysisResult.name,
+        location: analysisResult.location
+      }))
     }
+    onTabChange?.('home')
   };
 
   const resetUpload = () => {

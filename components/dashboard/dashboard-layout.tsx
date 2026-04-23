@@ -53,7 +53,7 @@ export function DashboardLayout({ onLogout }: DashboardLayoutProps) {
   const renderTabContent = () => {
     switch (activeTab) {
       case "home":
-        return <HomeTab />;
+        return <HomeTab onTabChange={setActiveTab} />;
       case "vision":
         return <VisionTab onTabChange={setActiveTab} />;
       case "chat":
@@ -63,7 +63,7 @@ export function DashboardLayout({ onLogout }: DashboardLayoutProps) {
       case "profile":
         return <ProfileTab />;
       default:
-        return <HomeTab />;
+        return <HomeTab onTabChange={setActiveTab} />;
     }
   };
 

@@ -126,22 +126,27 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
 
   // ── HANDLE MESSAGE ──
   const handleUserMessage = async (text: string) => {
+    console.log('handleMessage called with:', text)
     if (!text.trim()) return
     setAvatarStatus('thinking')
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: text, timestamp: new Date() }
     const updated = [...messages, userMsg]
     setMessages(updated)
     try {
+      console.log('Calling /api/chat...')
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: updated.map(m => ({ role: m.role, content: m.content })),
-          systemPrompt: `You are Atlas, a friendly AI travel guide. Only answer travel questions. Always end with a question. Write in plain sentences only. Do not use any markdown, bullet points, numbered lists, bold, headers or special formatting. Just plain conversational text.${locationName ? ` User is near ${locationName}.` : ''}`
+          systemPrompt: `You are Atlas, a friendly AI travel guide. Only answer travel questions. Keep responses under 4 sentences. Always end with a question.${locationName ? ` User is near ${locationName}.` : ''}`
         })
       })
+      console.log('API response status:', res.status)
       const data = await res.json()
+      console.log('API response data:', data)
       const reply = data.message || ''
+      console.log('Reply:', reply)
       const aiMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: reply, timestamp: new Date() }
       const final = [...updated, aiMsg]
 
@@ -167,7 +172,7 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
 
       setTimeout(() => { generateSuggestions(final); saveAvatarHistory(final) }, 0)
     } catch (err) {
-      console.error(err)
+      console.error('handleMessage error:', err)
       setAvatarStatus('idle')
     }
   }

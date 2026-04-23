@@ -30,10 +30,37 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
   const isSpeakingRef = useRef(false)
   const messagesRef = useRef<Message[]>([])
   const pendingVisionRef = useRef<string | null>(null)
+  const audioCtxRef = useRef<any>(null)
+  const micStreamRef = useRef<MediaStream | null>(null)
 
   useEffect(() => {
     messagesRef.current = messages
   }, [messages])
+
+  useEffect(() => {
+    navigator.mediaDevices?.getUserMedia({ audio: true })
+      .then(stream => { micStreamRef.current = stream })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const unlock = async () => {
+      try {
+        const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext
+        if (!AudioContextClass) return
+        if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+          audioCtxRef.current = new AudioContextClass()
+        }
+        await audioCtxRef.current.resume()
+      } catch {}
+    }
+    document.addEventListener('touchstart', unlock, { once: true })
+    document.addEventListener('mousedown', unlock, { once: true })
+    return () => {
+      document.removeEventListener('touchstart', unlock)
+      document.removeEventListener('mousedown', unlock)
+    }
+  }, [])
 
   // ── SUGGESTIONS — exact copy from chat-tab.tsx ──
   const generateSuggestions = async (chatMessages: Message[]) => {
@@ -160,19 +187,20 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
             body: JSON.stringify({ text: reply })
           })
           const arrayBuffer = await ttsRes.arrayBuffer()
-          const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext
-          const audioCtx = new AudioContext()
-          await audioCtx.resume()
-          const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer)
-          const source = audioCtx.createBufferSource()
+          const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext
+          if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+            audioCtxRef.current = new AudioContextClass()
+          }
+          if (audioCtxRef.current.state === 'suspended') {
+            await audioCtxRef.current.resume()
+          }
+          const audioBuffer = await audioCtxRef.current.decodeAudioData(arrayBuffer)
+          const source = audioCtxRef.current.createBufferSource()
           source.buffer = audioBuffer
-          source.connect(audioCtx.destination)
+          source.connect(audioCtxRef.current.destination)
           setAvatarStatus('speaking')
           source.start(0)
-          source.onended = () => {
-            setAvatarStatus('idle')
-            audioCtx.close()
-          }
+          source.onended = () => { setAvatarStatus('idle') }
         } catch {
           setAvatarStatus('idle')
         }
@@ -194,11 +222,12 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
 
     // Unlock AudioContext on iOS — must happen inside user gesture
     try {
-      const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext
-      if (AudioContext) {
-        const ctx = new AudioContext()
-        await ctx.resume()
-        ctx.close()
+      const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext
+      if (AudioContextClass) {
+        if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+          audioCtxRef.current = new AudioContextClass()
+        }
+        await audioCtxRef.current.resume()
       }
     } catch {}
 
@@ -210,11 +239,13 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
       return
     }
 
-    try {
-      await navigator.mediaDevices.getUserMedia({ audio: true })
-    } catch {
-      alert('Please allow microphone access')
-      return
+    if (!micStreamRef.current) {
+      try {
+        micStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true })
+      } catch {
+        alert('Please allow microphone access')
+        return
+      }
     }
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -324,7 +355,11 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onMouseDown={(e) => { e.preventDefault(); startListening() }}
+            onMouseUp={() => { if (recognitionRef.current) try { recognitionRef.current.stop() } catch {} }}
+            onMouseLeave={() => { if (recognitionRef.current) try { recognitionRef.current.stop() } catch {} }}
             onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); startListening() }}
+            onTouchEnd={(e) => { e.preventDefault(); if (recognitionRef.current) try { recognitionRef.current.stop() } catch {} }}
+            onTouchCancel={(e) => { e.preventDefault(); if (recognitionRef.current) try { recognitionRef.current.stop() } catch {} }}
             onContextMenu={(e) => e.preventDefault()}
             disabled={avatarStatus === 'speaking'}
             style={{
@@ -404,7 +439,32 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
             {suggestions.map((s, i) => (
               <button
                 key={i}
-                onClick={() => handleUserMessage(s)}
+                onMouseDown={async (e) => {
+                  e.preventDefault()
+                  try {
+                    const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext
+                    if (AudioContextClass) {
+                      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+                        audioCtxRef.current = new AudioContextClass()
+                      }
+                      await audioCtxRef.current.resume()
+                    }
+                  } catch {}
+                  handleUserMessage(s)
+                }}
+                onTouchStart={async (e) => {
+                  e.preventDefault()
+                  try {
+                    const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext
+                    if (AudioContextClass) {
+                      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+                        audioCtxRef.current = new AudioContextClass()
+                      }
+                      await audioCtxRef.current.resume()
+                    }
+                  } catch {}
+                  handleUserMessage(s)
+                }}
                 disabled={avatarStatus !== 'idle'}
                 style={{
                   padding: '8px 14px', borderRadius: '20px',

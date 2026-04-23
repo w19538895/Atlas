@@ -1,47 +1,65 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { OpenAI } from 'openai';
+import { NextResponse } from 'next/server'
+import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
-});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-export async function POST(req: NextRequest) {
-  try {
-    const { messages, systemPrompt } = await req.json();
+export async function POST(req: Request) {
+  const { messages, systemPrompt } = await req.json()
 
-    if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json(
-        { error: 'Invalid request: messages array required' },
-        { status: 400 }
-      );
-    }
+  const locationLine = systemPrompt?.match(/User is (?:currently )?near ([^.]+)/)?.[1]?.trim() || null
 
-    // Build system message with critical plain text instruction
-    const systemMessage = systemPrompt 
-      ? `${systemPrompt}\n\nCRITICAL: Respond in plain sentences only. No markdown. No bullet points. No numbered lists. No bold. No headers. No special characters.`
-      : 'You are a helpful assistant. Respond in plain sentences only. No markdown. No bullet points. No numbered lists. No bold. No headers. No special characters.'
+  // Extract what topic is being discussed from last few messages
+  const recentMessages = messages.slice(-6)
+  const conversationContext = recentMessages
+    .map((m: any) => `${m.role === 'user' ? 'User' : 'Atlas'}: ${m.content}`)
+    .join('\n')
 
-    // Add system message to the beginning of messages array
-    const messagesWithSystem = [
-      { role: 'system', content: systemMessage },
+  const systemContent = `You are Atlas, an expert AI travel guide helping tourists discover and learn about places worldwide.
+
+YOUR PURPOSE:
+- Help tourists learn about landmarks, attractions, history, culture, food, transport and accommodation anywhere in the world
+- Give specific, accurate, helpful travel information
+- Be friendly, enthusiastic and conversational
+
+CRITICAL CONTEXT RULE:
+- Always answer questions in the context of what is being discussed in the conversation
+- If the conversation is about Sigiriya in Sri Lanka and user asks "best time to visit" answer about Sigiriya NOT about the user's current location
+- If the conversation is about Paris and user asks "what should I eat" answer about Parisian food NOT local food
+- NEVER switch context to the user's physical location unless they explicitly ask about their current location
+- "This area" "this place" "here" in a conversation means the place being DISCUSSED not where the user physically is
+- Always maintain the topic of the conversation
+
+LOCATION RULE:
+${locationLine ? `- User's physical location is: ${locationLine}
+- Use this ONLY when:
+  1. User explicitly asks "near me" "nearby" "around here" "close to me" "in my area"
+  2. User asks "how do I get there from here" or similar directions from current location
+  3. A place name is genuinely unclear and their location helps identify what they mean
+  4. User directly asks about their current city or area
+- NEVER use location to answer questions about OTHER places being discussed` : '- No location data available'}
+
+OFF TOPIC RULE:
+- If asked anything completely unrelated to travel, tourism, geography, culture, food, transport or history say exactly: "I'm Atlas, your travel guide! I can only help with travel related questions. What place would you like to explore?"
+- Non-travel topics include: coding, maths, politics, health, finance, celebrities, sports scores, weather forecasts
+- DO answer about: ANY place in the world, local food, cultural customs, historical events related to places, how to get anywhere
+
+FORMAT RULES — CRITICAL:
+- ZERO markdown — no bold, no headers, no bullet points, no numbered lists, no asterisks, no hashes
+- Plain conversational sentences ONLY
+- Natural response length — 1-2 sentences for simple questions, more for complex ones
+- ALWAYS end with a relevant question about the SAME topic being discussed
+- Never start response with "Certainly" "Of course" "Great question" or similar filler phrases`
+
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    max_tokens: 800,
+    temperature: 0.7,
+    messages: [
+      { role: 'system', content: systemContent },
       ...messages
     ]
+  })
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: messagesWithSystem as any,
-      temperature: 0.7,
-      max_tokens: 50,
-    });
-
-    const message = response.choices[0]?.message?.content || '';
-
-    return NextResponse.json({ message });
-  } catch (error) {
-    console.error('API error:', error);
-    return NextResponse.json(
-      { error: 'Failed to process request' },
-      { status: 500 }
-    );
-  }
+  const message = response.choices[0]?.message?.content || ''
+  return NextResponse.json({ message })
 }

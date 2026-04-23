@@ -248,10 +248,9 @@ export function ChatTab({ onTabChange }: { onTabChange?: (tab: string) => void }
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [
-            {
-              role: "system",
-              content:
-                "You are a travel assistant. Based on the conversation so far generate exactly 3 short follow up question suggestions the user might want to ask next. Each suggestion must be under 8 words. Return ONLY a valid JSON array of 3 strings like this: [\"suggestion 1\", \"suggestion 2\", \"suggestion 3\"] — nothing else, no explanation, no markdown",
+            { 
+              role: 'system', 
+              content: `You are a travel assistant. Look at this conversation and generate exactly 3 short follow up questions under 8 words each. CRITICAL: The questions must be specifically about the exact place or topic being discussed in the conversation. If talking about Sigiriya generate questions about Sigiriya. If talking about Paris generate questions about Paris. NEVER generate questions about the user's current physical location unless the conversation is explicitly about their current location. Return ONLY valid JSON array: ["q1","q2","q3"] — nothing else, no markdown, no explanation.` 
             },
             {
               role: "user",

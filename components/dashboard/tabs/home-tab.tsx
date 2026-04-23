@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useLocation } from '@/lib/LocationContext'
 
@@ -28,6 +28,11 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
   const recognitionRef = useRef<any>(null)
   const isAudioMutedRef = useRef(false)
   const isSpeakingRef = useRef(false)
+  const messagesRef = useRef<Message[]>([])
+
+  useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
 
   // ── SUGGESTIONS — exact copy from chat-tab.tsx ──
   const generateSuggestions = async (chatMessages: Message[]) => {
@@ -125,12 +130,12 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
   }
 
   // ── HANDLE MESSAGE ──
-  const handleUserMessage = async (text: string) => {
+  const handleUserMessage = useCallback(async (text: string) => {
     console.log('handleMessage called with:', text)
     if (!text.trim()) return
     setAvatarStatus('thinking')
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: text, timestamp: new Date() }
-    const updated = [...messages, userMsg]
+    const updated = [...messagesRef.current, userMsg]
     setMessages(updated)
     try {
       console.log('Calling /api/chat...')
@@ -150,32 +155,37 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
       const aiMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: reply, timestamp: new Date() }
       const final = [...updated, aiMsg]
 
-      // Don't set messages yet
-      await new Promise<void>((resolve) => {
-        fetch('/api/tts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: reply })
-        }).then(r => r.blob()).then(blob => {
+      // Show message immediately — don't wait for audio
+      setMessages(final)
+
+      if (!isAudioMutedRef.current) {
+        try {
+          const ttsRes = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: reply })
+          })
+          const blob = await ttsRes.blob()
           const url = URL.createObjectURL(blob)
           const audio = new Audio(url)
-          audio.onplay = () => {
-            setAvatarStatus('speaking')
-            setMessages(final)  // Show text exactly when audio starts
-            resolve()
-          }
+          audio.onplay = () => setAvatarStatus('speaking')
           audio.onended = () => { setAvatarStatus('idle'); URL.revokeObjectURL(url) }
-          audio.onerror = () => { setAvatarStatus('idle'); URL.revokeObjectURL(url); resolve() }
-          audio.play()
-        })
-      })
+          audio.onerror = () => { setAvatarStatus('idle'); URL.revokeObjectURL(url) }
+          // iOS Safari requires play() to be called and its promise handled
+          await audio.play().catch(() => { setAvatarStatus('idle') })
+        } catch {
+          setAvatarStatus('idle')
+        }
+      } else {
+        setAvatarStatus('idle')
+      }
 
       setTimeout(() => { generateSuggestions(final); saveAvatarHistory(final) }, 0)
     } catch (err) {
       console.error('handleMessage error:', err)
       setAvatarStatus('idle')
     }
-  }
+  }, [locationName, currentUser])
 
   // ── MIC BUTTON ──
   const startListening = async () => {
@@ -223,9 +233,13 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
     localStorage.removeItem('visionLandmark')
     try {
       const { name, location } = JSON.parse(landmarkData)
-      setTimeout(() => handleUserMessage(`I just detected ${name} in ${location}. Tell me about it!`), 500)
+      // Use setTimeout so component is fully mounted before firing
+      const timer = setTimeout(() => {
+        handleUserMessage(`I just detected ${name} in ${location}. Tell me about it!`)
+      }, 800)
+      return () => clearTimeout(timer)
     } catch (e) { console.error(e) }
-  }, [])
+  }, [handleUserMessage])
 
   // ── AVATAR CLASS ──
   const getAvatarClass = () => {

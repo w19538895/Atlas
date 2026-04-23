@@ -43,25 +43,32 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
         stream.getTracks().forEach(t => t.stop())
       })
       .catch(() => {})
-  }, [])
 
-  useEffect(() => {
-    const unlock = async () => {
+    // Pre-create AudioContext so it's ready on first tap
+    const warmUp = async () => {
       try {
         const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext
         if (!AudioContextClass) return
         if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
           audioCtxRef.current = new AudioContextClass()
         }
+        // Play a silent buffer to fully unlock it on iOS
+        const buffer = audioCtxRef.current.createBuffer(1, 1, 22050)
+        const source = audioCtxRef.current.createBufferSource()
+        source.buffer = buffer
+        source.connect(audioCtxRef.current.destination)
+        source.start(0)
         await audioCtxRef.current.resume()
       } catch {}
     }
-    document.addEventListener('touchstart', unlock, { once: true })
-    document.addEventListener('mousedown', unlock, { once: true })
-    return () => {
-      document.removeEventListener('touchstart', unlock)
-      document.removeEventListener('mousedown', unlock)
+
+    const onFirstTouch = () => {
+      warmUp()
+      document.removeEventListener('touchstart', onFirstTouch)
+      document.removeEventListener('mousedown', onFirstTouch)
     }
+    document.addEventListener('touchstart', onFirstTouch, { once: true })
+    document.addEventListener('mousedown', onFirstTouch, { once: true })
   }, [])
 
   // ── SUGGESTIONS — exact copy from chat-tab.tsx ──

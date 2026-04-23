@@ -44,15 +44,26 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
           messages: [
             { 
               role: 'system', 
-              content: `You are a travel assistant. Look at this conversation and generate exactly 3 short follow up questions under 8 words each. CRITICAL: The questions must be specifically about the exact place or topic being discussed in the conversation. If talking about Sigiriya generate questions about Sigiriya. If talking about Paris generate questions about Paris. NEVER generate questions about the user's current physical location unless the conversation is explicitly about their current location. Return ONLY valid JSON array: ["q1","q2","q3"] — nothing else, no markdown, no explanation.` 
+              content: `Generate exactly 3 short travel follow-up questions under 8 words each based on this conversation. Return ONLY a valid JSON array with exactly 3 string elements like this example: ["What is the history?","How do I get there?","What should I eat?"]. Do not return q1 q2 q3. Do not use markdown. Do not add any explanation. Just the JSON array.`
             },
             { role: 'user', content: conversationForSuggestions }
           ]
         })
       })
       const data = await response.json()
-      const parsed = JSON.parse(data.message?.trim() || '[]')
-      if (Array.isArray(parsed) && parsed.length === 3) setSuggestions(parsed)
+      const raw = data.message?.trim() || '[]'
+      // Remove any markdown code blocks if present
+      const cleaned = raw.replace(/```json/g, '').replace(/```/g, '').trim()
+      try {
+        const parsed = JSON.parse(cleaned)
+        if (Array.isArray(parsed) && parsed.length === 3 && parsed.every((s: any) => typeof s === 'string' && s !== 'q1' && s !== 'q2' && s !== 'q3')) {
+          setSuggestions(parsed)
+        } else {
+          setSuggestions(defaultSuggestions)
+        }
+      } catch {
+        setSuggestions(defaultSuggestions)
+      }
     } catch { }
   }
 

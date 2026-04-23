@@ -42,9 +42,16 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
     navigator.mediaDevices?.getUserMedia({ audio: true })
       .then(stream => {
         stream.getTracks().forEach(t => t.stop())
-        // Permission already existed before this session — no dialog shown
-        // so the first tap is free to start recognition directly
         audioUnlockedRef.current = true
+        try {
+          const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext
+          if (AudioContextClass) {
+            if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+              audioCtxRef.current = new AudioContextClass()
+            }
+            audioCtxRef.current.resume()
+          }
+        } catch {}
       })
       .catch(() => {})
   }, [])
@@ -176,7 +183,8 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
           const arrayBuffer = await ttsRes.arrayBuffer()
           const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext
           if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-            audioCtxRef.current = new AudioContextClass()
+            audioCtxRef.current = (window as any).__atlasAudioCtx || new AudioContextClass()
+            ;(window as any).__atlasAudioCtx = null
           }
           if (audioCtxRef.current.state === 'suspended') {
             await audioCtxRef.current.resume()
@@ -224,18 +232,6 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
       }
     } catch {}
 
-    // If this is the very first tap (mic permission just granted),
-    // AudioContext is now unlocked — but iOS consumed this gesture for the
-    // permission dialog so SpeechRecognition won't start. Mark as unlocked
-    // and return. Next tap will work immediately.
-    if (!audioUnlockedRef.current) {
-      audioUnlockedRef.current = true
-      // Brief visual feedback so user knows to tap again
-      setAvatarStatus('listening')
-      setTimeout(() => setAvatarStatus('idle'), 400)
-      return
-    }
-
     // If coming from Vision, fire that message now
     if (pendingVisionRef.current) {
       const msg = pendingVisionRef.current
@@ -281,9 +277,10 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
     localStorage.removeItem('visionLandmark')
     try {
       const { name, location } = JSON.parse(landmarkData)
-      pendingVisionRef.current = `I just detected ${name} in ${location}. Tell me about it!`
+      const msg = `I just detected ${name} in ${location}. Tell me about it!`
+      setTimeout(() => handleUserMessage(msg), 300)
     } catch (e) { console.error(e) }
-  }, [])
+  }, [handleUserMessage])
 
   // ── AVATAR CLASS ──
   const getAvatarClass = () => {

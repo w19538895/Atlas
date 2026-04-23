@@ -216,8 +216,21 @@ export function VisionTab({ onTabChange }: { onTabChange?: (tab: string) => void
     }
   };
 
-  const handleTalkToAvatar = () => {
+  const handleTalkToAvatar = async () => {
     if (analysisResult) {
+      try {
+        const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext
+        if (AudioContextClass) {
+          const ctx = new AudioContextClass()
+          await ctx.resume()
+          const buffer = ctx.createBuffer(1, 1, 22050)
+          const src = ctx.createBufferSource()
+          src.buffer = buffer
+          src.connect(ctx.destination)
+          src.start(0)
+          ;(window as any).__atlasAudioCtx = ctx
+        }
+      } catch {}
       localStorage.setItem('visionLandmark', JSON.stringify({
         name: analysisResult.name,
         location: analysisResult.location

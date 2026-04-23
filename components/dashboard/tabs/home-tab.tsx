@@ -1,8 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { useAuth } from '@/lib/auth-context'
 import { useLocation } from '@/lib/LocationContext'
-import { auth, db } from "@/firebase.config";
-import { setDoc, doc } from "firebase/firestore";
 
 interface Message {
   id: string
@@ -18,329 +17,323 @@ const defaultSuggestions = [
   'Best hidden gems near me?'
 ]
 
-export function HomeTab() {
+export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }) {
+  const { user: currentUser } = useAuth()
   const { locationName } = useLocation()
-  const currentUser = auth.currentUser
   const [messages, setMessages] = useState<Message[]>([])
   const [suggestions, setSuggestions] = useState<string[]>(defaultSuggestions)
-  const [avatarStatus, setAvatarStatus] = useState<'idle' | 'listening' | 'speaking' | 'thinking' | 'connecting'>('connecting')
-  const [isConnected, setIsConnected] = useState(false)
-  const [isMicMuted, setIsMicMuted] = useState(false)
+  const [avatarStatus, setAvatarStatus] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle')
   const [isAudioMuted, setIsAudioMuted] = useState(false)
   const sessionId = useRef(Date.now().toString())
-  const audioRef = useRef<HTMLAudioElement>(null)
-  const pcRef = useRef<RTCPeerConnection | null>(null)
-  const dcRef = useRef<RTCDataChannel | null>(null)
-  const micTrackRef = useRef<MediaStreamTrack | null>(null)
-  const lastResponseId = useRef<string | null>(null)
-  const lastUserItemId = useRef<string | null>(null)
+  const recognitionRef = useRef<any>(null)
+  const isAudioMutedRef = useRef(false)
+  const isSpeakingRef = useRef(false)
 
+  // ── SUGGESTIONS — exact copy from chat-tab.tsx ──
   const generateSuggestions = async (chatMessages: Message[]) => {
     try {
-      const lastMessages = chatMessages.slice(-4);
-      
-      if (lastMessages.length === 0) {
-        setSuggestions(defaultSuggestions);
-        return;
-      }
-
+      const lastMessages = chatMessages.slice(-4)
+      if (lastMessages.length === 0) { setSuggestions(defaultSuggestions); return }
       const conversationForSuggestions = lastMessages
-        .map((msg) => `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`)
-        .join("\n");
-
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        .map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
+        .join('\n')
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [
             {
-              role: "system",
-              content:
-                "You are a travel assistant. Based on the conversation so far generate exactly 3 short follow up question suggestions the user might want to ask next. Each suggestion must be under 8 words. Return ONLY a valid JSON array of 3 strings like this: [\"suggestion 1\", \"suggestion 2\", \"suggestion 3\"] — nothing else, no explanation, no markdown",
+              role: 'system',
+              content: `You are a travel assistant.${locationName ? ` The conversation is about locations near ${locationName}.` : ''} Based on this conversation generate exactly 3 short follow up question suggestions under 8 words each. Return ONLY valid JSON array: ["q1","q2","q3"] — nothing else, no explanation, no markdown`
             },
-            {
-              role: "user",
-              content: conversationForSuggestions,
-            },
-          ],
-        }),
-      });
+            { role: 'user', content: conversationForSuggestions }
+          ]
+        })
+      })
+      const data = await response.json()
+      const parsed = JSON.parse(data.message?.trim() || '[]')
+      if (Array.isArray(parsed) && parsed.length === 3) setSuggestions(parsed)
+    } catch { }
+  }
 
-      const data = await response.json();
-      const responseText = data.message?.trim() || "";
-      
-      try {
-        const parsedSuggestions = JSON.parse(responseText);
-        if (Array.isArray(parsedSuggestions) && parsedSuggestions.length === 3 && parsedSuggestions.every((s: any) => typeof s === "string")) {
-          setSuggestions(parsedSuggestions);
-        }
-      } catch (parseError) {
-        console.warn("Failed to parse suggestions JSON", parseError);
-      }
-    } catch (error) {
-      console.error("Suggestion generation error:", error);
-    }
-  };
-
+  // ── SAVE HISTORY — exact copy from chat-tab.tsx but collection = avatarHistory ──
   const saveAvatarHistory = async (chatMessages: Message[]) => {
+    if (!currentUser) return
     try {
-      if (!currentUser?.uid) {
-        console.warn("User not authenticated, skipping avatar history save");
-        return;
-      }
-
-      if (chatMessages.length === 0) return;
-
-      const lastUserMessage = [...chatMessages].reverse().find(msg => msg.role === "user")?.content || "";
-      const lastAIResponse = [...chatMessages].reverse().find(msg => msg.role === "assistant")?.content || "";
-
-      const avatarData = {
+      const { db } = await import('@/firebase.config')
+      const { setDoc, doc } = await import('firebase/firestore')
+      const lastUserMessage = [...chatMessages].reverse().find(m => m.role === 'user')?.content || ''
+      const lastAIResponse = [...chatMessages].reverse().find(m => m.role === 'assistant')?.content || ''
+      await setDoc(doc(db, 'avatarHistory', sessionId.current), {
         userId: currentUser.uid,
-        messages: chatMessages.map(msg => ({
-          role: msg.role,
-          content: msg.content,
-          timestamp: msg.timestamp instanceof Date ? msg.timestamp.toISOString() : msg.timestamp,
+        messages: chatMessages.map(m => ({
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp
         })),
         lastMessage: lastUserMessage,
         aiLastResponse: lastAIResponse,
-        location: locationName || null,
+        location: locationName || '',
         timestamp: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      await setDoc(doc(db, "avatarHistory", sessionId.current), avatarData);
-      console.log("Avatar history saved successfully");
-    } catch (error) {
-      console.error("Error saving avatar history to Firestore:", error);
-    }
-  };
-
-  const connect = async () => {
-    try {
-      setAvatarStatus('connecting')
-      const tokenRes = await fetch('/api/realtime', { method: 'POST' })
-      const session = await tokenRes.json()
-      const ephemeralKey = session.client_secret.value
-
-      const pc = new RTCPeerConnection()
-      pcRef.current = pc
-
-      if (audioRef.current) {
-        audioRef.current.autoplay = true
-        pc.ontrack = (e) => {
-          if (audioRef.current) audioRef.current.srcObject = e.streams[0]
-        }
-      }
-
-      const ms = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
+        updatedAt: new Date().toISOString()
       })
-      micTrackRef.current = ms.getTracks()[0]
-      pc.addTrack(ms.getTracks()[0])
-
-      const dc = pc.createDataChannel('oai-events')
-      dcRef.current = dc
-
-      dc.onmessage = (e) => {
-        const event = JSON.parse(e.data)
-        if (event.type === 'input_audio_buffer.speech_started') setAvatarStatus('listening')
-        if (event.type === 'response.created') setAvatarStatus('thinking')
-        if (event.type === 'response.audio.delta') setAvatarStatus('speaking')
-        if (event.type === 'response.done') {
-          setAvatarStatus('idle')
-          const responseId = event.response?.id
-          if (responseId && responseId === lastResponseId.current) return
-          lastResponseId.current = responseId
-          
-          const aiText = event.response?.output?.[0]?.content?.[0]?.transcript || ''
-          if (aiText) {
-            const assistantMessage: Message = {
-              id: Date.now().toString(),
-              role: 'assistant',
-              content: aiText,
-              timestamp: new Date()
-            }
-            setMessages(prev => {
-              const updated = [...prev, assistantMessage]
-              setTimeout(() => {
-                generateSuggestions(updated)
-                saveAvatarHistory(updated)
-              }, 0)
-              return updated
-            })
-          }
-        }
-        if (event.type === 'conversation.item.created' && event.item?.role === 'user') {
-          const itemId = event.item?.id
-          if (itemId && itemId === lastUserItemId.current) return
-          lastUserItemId.current = itemId
-          
-          const userText = event.item?.content?.[0]?.transcript || ''
-          if (userText) {
-            const userMessage: Message = {
-              id: Date.now().toString(),
-              role: 'user',
-              content: userText,
-              timestamp: new Date()
-            }
-            setMessages(prev => [...prev, userMessage])
-          }
-        }
-      }
-
-      const offer = await pc.createOffer()
-      await pc.setLocalDescription(offer)
-
-      const sdpRes = await fetch('https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17', {
-        method: 'POST',
-        body: offer.sdp,
-        headers: {
-          Authorization: `Bearer ${ephemeralKey}`,
-          'Content-Type': 'application/sdp'
-        }
-      })
-      const answer = { type: 'answer' as RTCSdpType, sdp: await sdpRes.text() }
-      await pc.setRemoteDescription(answer)
-
-      setIsConnected(true)
-      setAvatarStatus('idle')
+      console.log('✅ Avatar history saved')
     } catch (err) {
-      console.error('Realtime connect error:', err)
-      setAvatarStatus('idle')
+      console.error('Failed to save avatar history:', err)
     }
   }
 
-  useEffect(() => {
-    connect()
-    return () => { pcRef.current?.close() }
-  }, [])
+  // ── SPEAK ──
+  const speak = (text: string): Promise<void> => {
+    return new Promise((resolve) => {
+      window.speechSynthesis.cancel()
+      setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(text)
+        utterance.volume = 1.0
+        utterance.rate = 0.92
+        utterance.onend = () => { setAvatarStatus('idle'); resolve() }
+        utterance.onerror = () => { setAvatarStatus('idle'); resolve() }
+        window.speechSynthesis.speak(utterance)
+      }, 100)
+    })
+  }
 
-  useEffect(() => {
-    if (!isConnected || !dcRef.current || dcRef.current.readyState !== 'open') return
-    dcRef.current.send(JSON.stringify({
-      type: 'session.update',
-      session: {
-        instructions: `You are Atlas, an enthusiastic and friendly AI travel guide.${locationName ? ` The user is currently near ${locationName}. Use this to give accurate local recommendations.` : ''} Keep responses conversational and under 3 sentences. Always end with a question.`
-      }
-    }))
-  }, [isConnected, locationName])
-
-  const handleSuggestion = (text: string) => {
-    if (!dcRef.current || dcRef.current.readyState !== 'open') return
+  // ── HANDLE MESSAGE — exact same as chat-tab sendMessage + speak ──
+  const handleUserMessage = async (text: string) => {
+    if (!text.trim()) return
+    setAvatarStatus('thinking')
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: text,
       timestamp: new Date()
     }
-    setMessages(prev => [...prev, userMessage])
-    dcRef.current.send(JSON.stringify({
-      type: 'conversation.item.create',
-      item: {
-        type: 'message',
-        role: 'user',
-        content: [{ type: 'input_text', text }]
+    const updatedMessages = [...messages, userMessage]
+    setMessages(updatedMessages)
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
+          systemPrompt: `You are Atlas, an enthusiastic and friendly AI travel guide. You ONLY answer travel related questions about landmarks, restaurants, attractions, history of places, transport and accommodation. If asked anything else politely redirect to travel topics. Keep responses under 4 sentences. Always end with a travel related question.${locationName ? ` User is currently near ${locationName}.` : ''}`
+        })
+      })
+      const data = await response.json()
+      const aiResponse = data.message || ''
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: aiResponse,
+        timestamp: new Date()
       }
-    }))
-    dcRef.current.send(JSON.stringify({ type: 'response.create' }))
-  }
-
-  const toggleMicMute = () => {
-    if (micTrackRef.current) {
-      micTrackRef.current.enabled = !micTrackRef.current.enabled
-      setIsMicMuted(!isMicMuted)
+      const finalMessages = [...updatedMessages, assistantMessage]
+      setMessages(finalMessages)
+      await speak(aiResponse)
+      setAvatarStatus('idle')
+      setTimeout(() => {
+        generateSuggestions(finalMessages)
+        saveAvatarHistory(finalMessages)
+      }, 0)
+    } catch (err) {
+      console.error('Avatar chat error:', err)
+      setAvatarStatus('idle')
     }
   }
 
+  // ── MIC BUTTON ──
+  const startListening = async () => {
+    if (avatarStatus === 'speaking') return
+    window.speechSynthesis.cancel()
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true })
+    } catch {
+      alert('Please allow microphone access')
+      return
+    }
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) { alert('Please use Chrome'); return }
+    const recognition = new SpeechRecognition()
+    recognitionRef.current = recognition
+    recognition.continuous = false
+    recognition.lang = 'en-US'
+    recognition.interimResults = false
+    recognition.onstart = () => setAvatarStatus('listening')
+    recognition.onresult = async (event: any) => {
+      const transcript = event.results[0][0].transcript
+      recognition.stop()
+      await handleUserMessage(transcript)
+    }
+    recognition.onerror = () => setAvatarStatus('idle')
+    recognition.onend = () => setAvatarStatus(prev => prev === 'listening' ? 'idle' : prev)
+    recognition.start()
+  }
+
+  // ── AUDIO MUTE ──
   const toggleAudioMute = () => {
-    if (audioRef.current) {
-      audioRef.current.muted = !audioRef.current.muted
-      setIsAudioMuted(!isAudioMuted)
+    const newVal = !isAudioMuted
+    isAudioMutedRef.current = newVal
+    setIsAudioMuted(newVal)
+    if (newVal) {
+      window.speechSynthesis.cancel()
+      setAvatarStatus('idle')
     }
   }
 
+  // ── VISION FLOW ──
   useEffect(() => {
-    if (!isConnected || !dcRef.current) return
     const landmarkData = localStorage.getItem('visionLandmark')
     if (!landmarkData) return
     localStorage.removeItem('visionLandmark')
     try {
       const { name, location } = JSON.parse(landmarkData)
-      const text = `I just detected ${name} in ${location}. Tell me about it!`
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        role: 'user',
-        content: text,
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, userMessage])
-      dcRef.current!.send(JSON.stringify({
-        type: 'conversation.item.create',
-        item: { type: 'message', role: 'user', content: [{ type: 'input_text', text }] }
-      }))
-      dcRef.current!.send(JSON.stringify({ type: 'response.create' }))
-    } catch (e) {
-      console.error('Vision landmark error:', e)
-    }
-  }, [isConnected])
+      setTimeout(() => handleUserMessage(`I just detected ${name} in ${location}. Tell me about it!`), 500)
+    } catch (e) { console.error(e) }
+  }, [])
+
+  // ── AVATAR CLASS ──
+  const getAvatarClass = () => {
+    if (avatarStatus === 'speaking') return 'border-speaking'
+    if (avatarStatus === 'listening') return 'border-listening'
+    if (avatarStatus === 'thinking') return 'border-thinking'
+    return 'border-idle'
+  }
+
+  const lastAIMessage = messages.filter(m => m.role === 'assistant').slice(-1)[0]?.content
 
   return (
-    <div className="flex flex-col h-full items-center px-4 py-6 gap-4">
-      <audio ref={audioRef} autoPlay playsInline />
+    <div style={{ display: 'flex', height: '100%', overflow: 'hidden', padding: '16px', gap: '20px' }}>
 
-      {/* Avatar card */}
-      <div className={`relative rounded-2xl overflow-hidden shadow-xl border-4 w-64 h-64 
-        ${avatarStatus === 'speaking' ? 'border-red-500' : ''}
-        ${avatarStatus === 'listening' ? 'border-blue-500' : ''}
-        ${avatarStatus === 'thinking' ? 'border-yellow-500' : ''}
-        ${avatarStatus === 'idle' || avatarStatus === 'connecting' ? 'border-gray-300' : ''}
-      `}>
-        <img
-          src="/atlas-avatar.png"
-          className="w-full h-full object-cover object-top"
-          alt="Atlas Avatar"
-        />
-        {/* Status pill */}
-        <div className="absolute bottom-2 right-2 bg-white rounded-full px-3 py-1 text-xs font-semibold flex items-center gap-1 shadow">
-          <span className={`w-2 h-2 rounded-full ${avatarStatus === 'idle' ? 'bg-green-500' : avatarStatus === 'connecting' ? 'bg-yellow-400' : 'bg-blue-500'}`} />
-          {avatarStatus === 'connecting' ? 'Connecting...' : avatarStatus === 'listening' ? 'Listening...' : avatarStatus === 'speaking' ? 'Speaking...' : avatarStatus === 'thinking' ? 'Thinking...' : 'Active'}
+      {/* LEFT — Avatar */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', flexShrink: 0 }}>
+
+        <div className={getAvatarClass()} style={{ position: 'relative', borderRadius: '24px', height: 'calc(100vh - 200px)', maxHeight: '560px', minHeight: '320px', aspectRatio: '3/4', borderWidth: '4px', borderColor: avatarStatus === 'speaking' ? '#ef4444' : avatarStatus === 'listening' ? '#10b981' : avatarStatus === 'thinking' ? '#f59e0b' : '#d1d5db', borderStyle: 'solid', transition: 'border-color 0.3s ease' }}>
+          <div style={{ width: '100%', height: '100%', borderRadius: '20px', overflow: 'hidden', background: '#f0f9ff' }}>
+            <img src="/atlas-avatar.png" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} alt="Atlas" />
+          </div>
+
+          {/* Status pill */}
+          <div style={{ position: 'absolute', bottom: '12px', right: '12px', background: 'white', borderRadius: '20px', padding: '5px 12px', fontSize: '11px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '5px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: avatarStatus === 'idle' ? '#22c55e' : avatarStatus === 'listening' ? '#10b981' : avatarStatus === 'thinking' ? '#f59e0b' : '#0ea5e9', display: 'inline-block' }} />
+            {avatarStatus === 'idle' ? 'Active' : avatarStatus === 'listening' ? 'Listening...' : avatarStatus === 'thinking' ? 'Thinking...' : 'Speaking...'}
+          </div>
+
+          {/* Decorative dots */}
+          <div style={{ position: 'absolute', top: '14px', left: '14px', width: '10px', height: '10px', borderRadius: '50%', background: '#7dd3fc', opacity: 0.9 }} />
+          <div style={{ position: 'absolute', top: '60px', right: '10px', width: '12px', height: '12px', borderRadius: '50%', background: '#fbbf24', opacity: 0.85 }} />
+          <div style={{ position: 'absolute', bottom: '80px', left: '10px', width: '9px', height: '9px', borderRadius: '50%', background: '#86efac', opacity: 0.85 }} />
+
+          {/* Wave bars when speaking */}
+          {avatarStatus === 'speaking' && (
+            <div style={{ position: 'absolute', bottom: '52px', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+              {[0, 0.1, 0.2, 0.15, 0.05, 0.2, 0.1, 0, 0.15, 0.05].map((delay, i) => (
+                <div key={i} style={{ width: '3px', background: 'white', borderRadius: '3px', opacity: 0.9, animation: `wave-bars 0.5s ease-in-out ${delay}s infinite` }} />
+              ))}
+            </div>
+          )}
+
+          {/* Pulse rings when listening */}
+          {avatarStatus === 'listening' && (
+            <>
+              <div style={{ position: 'absolute', inset: '-8px', borderRadius: '28px', border: '2px solid rgba(16,185,129,0.4)', animation: 'pulse-ring 1.2s ease-out infinite' }} />
+              <div style={{ position: 'absolute', inset: '-16px', borderRadius: '32px', border: '2px solid rgba(16,185,129,0.2)', animation: 'pulse-ring 1.2s ease-out 0.3s infinite' }} />
+            </>
+          )}
+        </div>
+
+        {/* Buttons */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onMouseDown={startListening}
+            onTouchStart={(e) => { e.preventDefault(); startListening() }}
+            disabled={avatarStatus === 'speaking'}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+              padding: '10px 22px', borderRadius: '12px', border: 'none',
+              fontSize: '12px', fontWeight: 500, cursor: 'pointer', color: 'white',
+              background: avatarStatus === 'listening'
+                ? 'linear-gradient(135deg,#10b981,#06b6d4)'
+                : 'linear-gradient(135deg,#0ea5e9,#06b6d4)',
+              boxShadow: '0 3px 10px rgba(6,182,212,0.3)',
+              opacity: avatarStatus === 'speaking' ? 0.5 : 1
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+              <path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/>
+            </svg>
+            {avatarStatus === 'listening' ? 'Listening...' : avatarStatus === 'speaking' ? 'Speaking...' : 'Hold to Speak'}
+          </button>
+
+          <button
+            onClick={toggleAudioMute}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+              padding: '10px 20px', borderRadius: '12px',
+              border: isAudioMuted ? '2px solid #ef4444' : '2px solid #06b6d4',
+              fontSize: '12px', fontWeight: 500, cursor: 'pointer',
+              color: isAudioMuted ? '#ef4444' : '#0e7490',
+              background: 'white'
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              {isAudioMuted
+                ? <><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></>
+                : <><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></>
+              }
+            </svg>
+            {isAudioMuted ? 'Audio Off' : 'Audio On'}
+          </button>
         </div>
       </div>
 
-      {/* Mute buttons */}
-      <div className="flex gap-3">
-        <button
-          onClick={toggleMicMute}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border transition-all
-            ${isMicMuted ? 'bg-red-100 border-red-300 text-red-600' : 'bg-gray-100 border-gray-300 text-gray-600'}`}
-        >
-          {isMicMuted ? '🎤 Mic Off' : '🎤 Mic On'}
-        </button>
-        <button
-          onClick={toggleAudioMute}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border transition-all
-            ${isAudioMuted ? 'bg-red-100 border-red-300 text-red-600' : 'bg-gray-100 border-gray-300 text-gray-600'}`}
-        >
-          {isAudioMuted ? '🔇 Sound Off' : '🔊 Sound On'}
-        </button>
-      </div>
+      {/* RIGHT — Content */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '16px', minWidth: 0 }}>
 
-      {/* Suggestions */}
-      <div className="flex flex-wrap gap-2 justify-center w-full max-w-md">
-        {suggestions.map((s, i) => (
-          <button
-            key={i}
-            onClick={() => handleSuggestion(s)}
-            disabled={!isConnected || avatarStatus !== 'idle'}
-            className="px-3 py-2 rounded-full text-sm bg-white border border-gray-200 shadow-sm hover:bg-blue-50 hover:border-blue-300 transition-all disabled:opacity-50"
-          >
-            {s}
-          </button>
-        ))}
+        <div>
+          <h2 style={{ fontSize: '18px', fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '5px' }}>Your Personal Tour Guide</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#0e7490' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#06b6d4', display: 'inline-block' }} />
+            {avatarStatus === 'idle' ? 'Ready to help' : avatarStatus === 'listening' ? 'Listening...' : avatarStatus === 'thinking' ? 'Thinking...' : 'Speaking...'}
+          </div>
+        </div>
+
+        {/* Response box */}
+        <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid #bae6fd', borderRadius: '14px', padding: '13px 15px' }}>
+          <div style={{ fontSize: '10px', color: '#0ea5e9', marginBottom: '6px', fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Atlas</div>
+          {avatarStatus === 'speaking' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '8px' }}>
+              {[0, 0.1, 0.3, 0.2, 0.4, 0.15, 0.35, 0.05, 0.25, 0.1].map((delay, i) => (
+                <div key={i} style={{ width: '3px', background: 'linear-gradient(to top,#0ea5e9,#06b6d4)', borderRadius: '3px', animation: `wave-bars 0.5s ease-in-out ${delay}s infinite` }} />
+              ))}
+            </div>
+          )}
+          <div style={{ fontSize: '13px', color: 'var(--color-text-primary)', lineHeight: 1.65 }}>
+            {lastAIMessage || "Hi! I'm Atlas, your personal AI travel guide. Tap the button and start speaking!"}
+          </div>
+        </div>
+
+        {/* Suggestions */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Suggestions</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px' }}>
+            {suggestions.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => handleUserMessage(s)}
+                disabled={avatarStatus !== 'idle'}
+                style={{
+                  padding: '8px 14px', borderRadius: '20px',
+                  border: '1.5px solid #bae6fd', background: 'white',
+                  fontSize: '12px', cursor: 'pointer', color: '#0369a1', fontWeight: 500,
+                  opacity: avatarStatus !== 'idle' ? 0.5 : 1
+                }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )

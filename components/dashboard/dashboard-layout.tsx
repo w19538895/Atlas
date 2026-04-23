@@ -68,9 +68,9 @@ export function DashboardLayout({ onLogout }: DashboardLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex" style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 border-r border-border bg-card">
+      <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card">
         {/* Logo */}
         <div className="flex items-center gap-2 p-6 border-b border-border">
           <div className="relative">
@@ -184,11 +184,11 @@ export function DashboardLayout({ onLogout }: DashboardLayoutProps) {
         </header>
 
         {/* Tab Content */}
-        <main className="flex-1 overflow-auto pb-20 lg:pb-6">{renderTabContent()}</main>
+        <main className="flex-1 overflow-hidden pb-16 md:pb-0 overflow-y-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>{renderTabContent()}</main>
 
         {/* Mobile Bottom Navigation */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border safe-area-pb">
-          <div className="flex items-center justify-around h-16">
+        <nav className="fixed bottom-0 left-0 right-0 md:hidden h-[60px] bg-white border-t border-border z-[9999]">
+          <div className="flex items-center justify-around w-full h-full">
             {tabs.map((tab) => (
               <button
                 key={tab.id}

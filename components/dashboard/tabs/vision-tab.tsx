@@ -251,12 +251,12 @@ export function VisionTab({ onTabChange }: { onTabChange?: (tab: string) => void
             {cameraMode && !cameraError ? (
               /* Camera Mode */
               <div className="space-y-4">
-                <div className="relative bg-black rounded-2xl overflow-hidden">
+                <div className="w-full aspect-video rounded-xl overflow-hidden bg-black relative">
                   <video
                     ref={videoRef}
                     autoPlay
                     playsInline
-                    className="w-full h-80 object-cover"
+                    className="w-full h-full object-cover"
                   />
                 </div>
                 <div className="flex gap-3">
@@ -455,7 +455,7 @@ export function VisionTab({ onTabChange }: { onTabChange?: (tab: string) => void
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-wrap gap-3 justify-center">
+              <div className="flex flex-wrap gap-3 justify-center" style={{ paddingBottom: '80px' }}>
                 <Button className="flex-1 sm:flex-none" onClick={handleChatAbout}>
                   <MessageCircle className="w-4 h-4 mr-2" />
                   Chat about this

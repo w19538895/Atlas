@@ -233,12 +233,12 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
   const lastAIMessage = messages.filter(m => m.role === 'assistant').slice(-1)[0]?.content
 
   return (
-    <div style={{ display: 'flex', height: '100%', overflow: 'hidden', padding: '16px', gap: '20px' }}>
+    <div className="flex flex-col md:flex-row h-full overflow-auto p-4 gap-4">
 
       {/* LEFT — Avatar */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', flexShrink: 0 }}>
+      <div className="flex flex-col items-center justify-start md:justify-center gap-3 flex-shrink-0">
 
-        <div className={getAvatarClass()} style={{ position: 'relative', borderRadius: '24px', height: 'calc(100vh - 200px)', maxHeight: '560px', minHeight: '320px', aspectRatio: '3/4', borderWidth: '4px', borderColor: avatarStatus === 'speaking' ? '#ef4444' : avatarStatus === 'listening' ? '#10b981' : avatarStatus === 'thinking' ? '#f59e0b' : '#d1d5db', borderStyle: 'solid', transition: 'border-color 0.3s ease' }}>
+        <div className={getAvatarClass()} style={{ position: 'relative', borderRadius: '24px', height: 'min(60vw, 560px)', maxHeight: '560px', minHeight: '280px', aspectRatio: '3/4', width: 'auto', borderWidth: '4px', borderColor: avatarStatus === 'speaking' ? '#ef4444' : avatarStatus === 'listening' ? '#10b981' : avatarStatus === 'thinking' ? '#f59e0b' : '#d1d5db', borderStyle: 'solid', transition: 'border-color 0.3s ease' }}>
           <div style={{ width: '100%', height: '100%', borderRadius: '20px', overflow: 'hidden', background: '#f0f9ff' }}>
             <img src="/atlas-avatar.png" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} alt="Atlas" />
           </div>
@@ -319,7 +319,7 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
       </div>
 
       {/* RIGHT — Content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '16px', minWidth: 0 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '16px', minWidth: 0, overflowY: 'auto', paddingBottom: '80px' }}>
 
         <div>
           <h2 style={{ fontSize: '18px', fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '5px' }}>Your Personal Tour Guide</h2>

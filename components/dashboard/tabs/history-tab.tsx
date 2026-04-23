@@ -148,7 +148,7 @@ export function HistoryTab() {
   };
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
+    <div className="p-4 lg:p-6 space-y-6" style={{ height: '100%', overflowY: 'auto', paddingBottom: '80px' }}>
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-foreground mb-2">History</h2>
@@ -158,7 +158,7 @@ export function HistoryTab() {
       {/* Filters & Search */}
       <div className="space-y-4">
         {/* Filter Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', scrollbarWidth: 'none' }}>
           {filters.map((filter) => (
             <Button
               key={filter.id}
@@ -195,24 +195,23 @@ export function HistoryTab() {
 
       {/* History List */}
       {filteredHistory.length > 0 ? (
-        <div className="space-y-3">
+        <div className="space-y-3" style={{ overflowX: 'hidden', width: '100%', paddingRight: '16px', paddingBottom: '80px' }}>
           {filteredHistory.map((item) => (
-            <Card key={item.id} className="hover:bg-muted/30 transition-colors">
-              <CardContent className="p-4">
-                <div className="flex gap-4">
+            <div key={item.id} className="w-full overflow-hidden rounded-xl bg-white shadow p-4 hover:bg-muted/30 transition-colors">
+              <div className="flex items-start gap-3 min-w-0">
                   {/* Thumbnail */}
-                  <div className="shrink-0">
+                  <div className="w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden">
                     {item.imageUrl ? (
                       <img
                         src={item.imageUrl || "/placeholder.svg"}
                         alt={item.title}
-                        className="w-16 h-16 rounded-xl object-cover"
+                        className="w-full h-full object-cover"
                         crossOrigin="anonymous"
                       />
                     ) : (
                       <div
                         className={cn(
-                          "w-16 h-16 rounded-xl flex items-center justify-center",
+                          "w-14 h-14 rounded-lg flex items-center justify-center",
                           item.type === "landmark" ? "bg-primary/10" : "bg-accent/10"
                         )}
                       >
@@ -271,10 +270,10 @@ export function HistoryTab() {
                     </div>
 
                     {item.location && (
-                      <p className="text-sm text-muted-foreground mb-1">{item.location}</p>
+                      <p className="text-sm text-muted-foreground mb-1 truncate">{item.location}</p>
                     )}
 
-                    <p className="text-sm text-muted-foreground/70 truncate mb-2">{item.preview}</p>
+                    <p className="text-sm text-muted-foreground/70 line-clamp-1 mb-2">{item.preview}</p>
 
                     <div className="flex items-center justify-between">
                       <div className="flex gap-1 flex-wrap">
@@ -293,8 +292,7 @@ export function HistoryTab() {
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+            </div>
           ))}
         </div>
       ) : (

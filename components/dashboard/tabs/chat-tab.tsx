@@ -518,8 +518,8 @@ export function ChatTab({ onTabChange }: { onTabChange?: (tab: string) => void }
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-border bg-card p-4">
-        <form onSubmit={handleSubmit} className="flex gap-2">
+      <div className="sticky bottom-0 bg-white border-t border-border p-3 flex gap-2 items-center md:sticky-none">
+        <form onSubmit={handleSubmit} className="flex gap-2 w-full">
           <div className="flex-1 relative">
             <Input
               ref={inputRef}

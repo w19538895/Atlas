@@ -141,7 +141,7 @@ export function ProfileTab() {
   };
 
   return (
-    <div className="p-4 lg:p-6 space-y-6 max-w-4xl mx-auto">
+    <div style={{ height: '100%', overflowY: 'auto', paddingBottom: '80px' }}><div className="max-w-2xl mx-auto px-6">
       {/* Profile Header */}
       <Card>
         <CardContent className="p-6">
@@ -190,19 +190,14 @@ export function ProfileTab() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             {travelStyles.map((style) => {
               const isSelected = selectedStyles.includes(style.id);
               return (
                 <button
                   key={style.id}
                   onClick={() => toggleStyle(style.id)}
-                  className={cn(
-                    "relative flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
-                    isSelected
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  )}
+                  style={{ padding: '10px 6px', borderRadius: '12px', border: '1.5px solid var(--color-border-tertiary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', cursor: 'pointer', position: 'relative', transition: 'all 0.2s', borderColor: isSelected ? 'var(--color-primary)' : 'var(--color-border-tertiary)', backgroundColor: isSelected ? 'rgba(var(--color-primary-rgb), 0.05)' : 'transparent' }}
                 >
                   {isSelected && (
                     <div className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
@@ -243,8 +238,9 @@ export function ProfileTab() {
                 <button
                   key={option.id}
                   onClick={() => setSelectedBudget(option.id)}
+                  style={{ padding: '10px 12px' }}
                   className={cn(
-                    "relative flex items-center gap-4 p-4 rounded-xl border-2 transition-all",
+                    "relative flex items-center gap-4 rounded-xl border-2 transition-all",
                     isSelected
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-primary/50"
@@ -468,6 +464,6 @@ export function ProfileTab() {
           Logout
         </Button>
       </div>
-    </div>
+    </div></div>
   );
 }

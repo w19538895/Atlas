@@ -32,6 +32,7 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
   const pendingVisionRef = useRef<string | null>(null)
   const audioCtxRef = useRef<any>(null)
   const micStreamRef = useRef<MediaStream | null>(null)
+  const audioUnlockedRef = useRef(false)
 
   useEffect(() => {
     messagesRef.current = messages
@@ -41,6 +42,9 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
     navigator.mediaDevices?.getUserMedia({ audio: true })
       .then(stream => {
         stream.getTracks().forEach(t => t.stop())
+        // Permission already existed before this session — no dialog shown
+        // so the first tap is free to start recognition directly
+        audioUnlockedRef.current = true
       })
       .catch(() => {})
   }, [])
@@ -203,7 +207,7 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
     if (avatarStatus === 'speaking') return
     window.speechSynthesis.cancel()
 
-    // Unlock AudioContext on iOS — must happen inside user gesture
+    // Unlock AudioContext — every tap, not just first
     try {
       const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext
       if (AudioContextClass) {
@@ -211,16 +215,28 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
           audioCtxRef.current = new AudioContextClass()
         }
         await audioCtxRef.current.resume()
-        // Play silent buffer to fully unlock iOS audio on this tap
+        // Play silent buffer to fully unlock iOS audio
         const buffer = audioCtxRef.current.createBuffer(1, 1, 22050)
-        const source = audioCtxRef.current.createBufferSource()
-        source.buffer = buffer
-        source.connect(audioCtxRef.current.destination)
-        source.start(0)
+        const src = audioCtxRef.current.createBufferSource()
+        src.buffer = buffer
+        src.connect(audioCtxRef.current.destination)
+        src.start(0)
       }
     } catch {}
 
-    // If coming from Vision, fire that message now (needs user gesture for audio)
+    // If this is the very first tap (mic permission just granted),
+    // AudioContext is now unlocked — but iOS consumed this gesture for the
+    // permission dialog so SpeechRecognition won't start. Mark as unlocked
+    // and return. Next tap will work immediately.
+    if (!audioUnlockedRef.current) {
+      audioUnlockedRef.current = true
+      // Brief visual feedback so user knows to tap again
+      setAvatarStatus('listening')
+      setTimeout(() => setAvatarStatus('idle'), 400)
+      return
+    }
+
+    // If coming from Vision, fire that message now
     if (pendingVisionRef.current) {
       const msg = pendingVisionRef.current
       pendingVisionRef.current = null
@@ -229,7 +245,7 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
     }
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SpeechRecognition) { alert('Please use Chrome'); return }
+    if (!SpeechRecognition) { alert('Speech recognition not supported'); return }
 
     const recognition = new SpeechRecognition()
     recognitionRef.current = recognition

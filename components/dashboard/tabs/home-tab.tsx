@@ -29,6 +29,7 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
   const isAudioMutedRef = useRef(false)
   const isSpeakingRef = useRef(false)
   const messagesRef = useRef<Message[]>([])
+  const pendingVisionRef = useRef<string | null>(null)
 
   useEffect(() => {
     messagesRef.current = messages
@@ -131,14 +132,12 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
 
   // ── HANDLE MESSAGE ──
   const handleUserMessage = useCallback(async (text: string) => {
-    console.log('handleMessage called with:', text)
     if (!text.trim()) return
     setAvatarStatus('thinking')
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: text, timestamp: new Date() }
     const updated = [...messagesRef.current, userMsg]
     setMessages(updated)
     try {
-      console.log('Calling /api/chat...')
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -147,15 +146,10 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
           systemPrompt: `You are Atlas, a friendly AI travel guide. Only answer travel questions. Keep responses under 4 sentences. Always end with a question.${locationName ? ` User is near ${locationName}.` : ''}`
         })
       })
-      console.log('API response status:', res.status)
       const data = await res.json()
-      console.log('API response data:', data)
       const reply = data.message || ''
-      console.log('Reply:', reply)
       const aiMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: reply, timestamp: new Date() }
       const final = [...updated, aiMsg]
-
-      // Show message immediately — don't wait for audio
       setMessages(final)
 
       if (!isAudioMutedRef.current) {
@@ -165,14 +159,20 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: reply })
           })
-          const blob = await ttsRes.blob()
-          const url = URL.createObjectURL(blob)
-          const audio = new Audio(url)
-          audio.onplay = () => setAvatarStatus('speaking')
-          audio.onended = () => { setAvatarStatus('idle'); URL.revokeObjectURL(url) }
-          audio.onerror = () => { setAvatarStatus('idle'); URL.revokeObjectURL(url) }
-          // iOS Safari requires play() to be called and its promise handled
-          await audio.play().catch(() => { setAvatarStatus('idle') })
+          const arrayBuffer = await ttsRes.arrayBuffer()
+          const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext
+          const audioCtx = new AudioContext()
+          await audioCtx.resume()
+          const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer)
+          const source = audioCtx.createBufferSource()
+          source.buffer = audioBuffer
+          source.connect(audioCtx.destination)
+          setAvatarStatus('speaking')
+          source.start(0)
+          source.onended = () => {
+            setAvatarStatus('idle')
+            audioCtx.close()
+          }
         } catch {
           setAvatarStatus('idle')
         }
@@ -191,14 +191,35 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
   const startListening = async () => {
     if (avatarStatus === 'speaking') return
     window.speechSynthesis.cancel()
+
+    // Unlock AudioContext on iOS — must happen inside user gesture
+    try {
+      const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext
+      if (AudioContext) {
+        const ctx = new AudioContext()
+        await ctx.resume()
+        ctx.close()
+      }
+    } catch {}
+
+    // If coming from Vision, fire that message now (needs user gesture for audio)
+    if (pendingVisionRef.current) {
+      const msg = pendingVisionRef.current
+      pendingVisionRef.current = null
+      handleUserMessage(msg)
+      return
+    }
+
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true })
     } catch {
       alert('Please allow microphone access')
       return
     }
+
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SpeechRecognition) { alert('Please use Chrome'); return }
+
     const recognition = new SpeechRecognition()
     recognitionRef.current = recognition
     recognition.continuous = false
@@ -233,13 +254,9 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
     localStorage.removeItem('visionLandmark')
     try {
       const { name, location } = JSON.parse(landmarkData)
-      // Use setTimeout so component is fully mounted before firing
-      const timer = setTimeout(() => {
-        handleUserMessage(`I just detected ${name} in ${location}. Tell me about it!`)
-      }, 800)
-      return () => clearTimeout(timer)
+      pendingVisionRef.current = `I just detected ${name} in ${location}. Tell me about it!`
     } catch (e) { console.error(e) }
-  }, [handleUserMessage])
+  }, [])
 
   // ── AVATAR CLASS ──
   const getAvatarClass = () => {
@@ -291,11 +308,24 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
           )}
         </div>
 
+        {/* Vision pending banner */}
+        {pendingVisionRef.current && (
+          <div style={{
+            background: '#fef3c7', border: '1px solid #fbbf24',
+            borderRadius: '10px', padding: '8px 14px',
+            fontSize: '12px', color: '#92400e', textAlign: 'center',
+            marginBottom: '8px'
+          }}>
+            🏛️ Landmark detected — tap <strong>Hold to Speak</strong> to hear about it
+          </div>
+        )}
+
         {/* Buttons */}
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
-            onMouseDown={startListening}
-            onTouchStart={(e) => { e.preventDefault(); startListening() }}
+            onMouseDown={(e) => { e.preventDefault(); startListening() }}
+            onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); startListening() }}
+            onContextMenu={(e) => e.preventDefault()}
             disabled={avatarStatus === 'speaking'}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
@@ -305,8 +335,12 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
                 ? 'linear-gradient(135deg,#10b981,#06b6d4)'
                 : 'linear-gradient(135deg,#0ea5e9,#06b6d4)',
               boxShadow: '0 3px 10px rgba(6,182,212,0.3)',
-              opacity: avatarStatus === 'speaking' ? 0.5 : 1
-            }}
+              opacity: avatarStatus === 'speaking' ? 0.5 : 1,
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              WebkitTouchCallout: 'none',
+              touchAction: 'none',
+            } as React.CSSProperties}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>

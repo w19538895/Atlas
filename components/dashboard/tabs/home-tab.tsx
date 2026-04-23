@@ -38,6 +38,14 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
   }, [messages])
 
   useEffect(() => {
+    navigator.mediaDevices?.getUserMedia({ audio: true })
+      .then(stream => {
+        stream.getTracks().forEach(t => t.stop())
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
     const unlock = async () => {
       try {
         const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext
@@ -233,27 +241,12 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
       return
     }
 
-    // Stop any existing stream before starting a new one
-    if (micStreamRef.current) {
-      micStreamRef.current.getTracks().forEach(t => t.stop())
-      micStreamRef.current = null
-    }
-    try {
-      micStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true })
-      // Release immediately — we only needed this to trigger the permission grant
-      micStreamRef.current.getTracks().forEach(t => t.stop())
-      micStreamRef.current = null
-    } catch {
-      alert('Please allow microphone access')
-      return
-    }
-
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SpeechRecognition) { alert('Please use Chrome'); return }
 
     const recognition = new SpeechRecognition()
     recognitionRef.current = recognition
-    recognition.continuous = false
+    recognition.continuous = true
     recognition.lang = 'en-US'
     recognition.interimResults = false
     recognition.onstart = () => setAvatarStatus('listening')

@@ -13,15 +13,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Search,
-  Calendar,
-  MapPin,
   MessageCircle,
   MoreVertical,
-  Eye,
   Trash2,
-  Share2,
   Heart,
-  Compass,
 } from "lucide-react";
 
 type FilterType = "all" | "conversations" | "landmarks" | "favorites";
@@ -39,15 +34,15 @@ interface HistoryItem {
   messages?: any[];
 }
 
-const filters: { id: FilterType; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "conversations", label: "Conversations" },
-  { id: "landmarks", label: "Landmarks" },
-  { id: "favorites", label: "Favorites" },
+const filters = [
+  { id: 'all', label: 'All' },
+  { id: 'voice', label: 'Voice' },
+  { id: 'chat', label: 'Chat' },
+  { id: 'favorites', label: 'Favorites' },
 ];
 
 export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => void }) {
-  const [activeFilter, setActiveFilter] = useState<FilterType>("all");
+  const [activeFilter, setActiveFilter] = useState<'all' | 'voice' | 'chat' | 'favorites'>('all');
   const [searchQuery, setSearchQuery] = useState("");
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,22 +94,6 @@ export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => voi
           }
         });
       } catch (e) { console.error('Avatar history error:', e); }
-
-      try {
-        const visionQuery = query(collection(db, 'visionHistory'), where('userId', '==', currentUser!.uid), orderBy('timestamp', 'desc'));
-        const visionDocs = await getDocs(visionQuery);
-        visionDocs.forEach(doc => {
-          const data = doc.data();
-          const landmarkName = data.landmarkName || 'Landmark';
-          allItems.push({
-            id: doc.id, type: 'landmark', title: landmarkName,
-            location: data.location || '', date: new Date(data.timestamp),
-            preview: `Landmark detected: ${landmarkName}`,
-            tags: ['Landmark'], isFavorite: false,
-            imageUrl: `https://source.unsplash.com/400x300/?${encodeURIComponent(landmarkName)},landmark`
-          });
-        });
-      } catch (e) { console.error('Vision history error:', e); }
 
       allItems.sort((a, b) => b.date.getTime() - a.date.getTime());
       setHistory(allItems);
@@ -177,9 +156,9 @@ export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => voi
   };
 
   const filteredHistory = history.filter((item) => {
-    if (activeFilter === "conversations" && item.type !== "conversation") return false;
-    if (activeFilter === "landmarks" && item.type !== "landmark") return false;
-    if (activeFilter === "favorites" && !item.isFavorite) return false;
+    if (activeFilter === 'voice' && !item.tags.includes('Voice')) return false;
+    if (activeFilter === 'chat' && !item.tags.includes('Chat')) return false;
+    if (activeFilter === 'favorites' && !item.isFavorite) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return item.title.toLowerCase().includes(q) ||
@@ -193,7 +172,7 @@ export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => voi
     <div style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', paddingBottom: '80px', width: '100%', maxWidth: '100%', boxSizing: 'border-box', padding: '16px' }}>
       <div>
         <h2 className="text-2xl font-bold text-foreground mb-2">History</h2>
-        <p className="text-muted-foreground">Your past interactions and discoveries</p>
+        <p className="text-muted-foreground">Your past voice and chat conversations</p>
       </div>
 
       <div className="space-y-4">
@@ -203,7 +182,7 @@ export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => voi
               key={filter.id}
               variant={activeFilter === filter.id ? "default" : "outline"}
               size="sm"
-              onClick={() => setActiveFilter(filter.id)}
+              onClick={() => setActiveFilter(filter.id as 'all' | 'voice' | 'chat' | 'favorites')}
               className={cn("shrink-0", activeFilter !== filter.id && "bg-transparent")}
             >
               {filter.label}
@@ -211,14 +190,11 @@ export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => voi
           ))}
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-3" style={{ marginBottom: '16px' }}>
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Search history..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
           </div>
-          <Button variant="outline" className="shrink-0 bg-transparent">
-            <Calendar className="h-4 w-4 mr-2" />Date
-          </Button>
         </div>
       </div>
 
@@ -239,7 +215,7 @@ export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => voi
                   ) : (
                     <div style={{ width: '52px', height: '52px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: item.type === 'landmark' ? '#eff6ff' : '#f0fdf4' }}>
                       {item.type === 'landmark' ? (
-                        <MapPin style={{ width: '22px', height: '22px', color: '#3b82f6' }} />
+                        <span style={{ fontSize: '18px' }}>📍</span>
                       ) : item.tags.includes('Voice') ? (
                         <span style={{ fontSize: '18px' }}>🎤</span>
                       ) : (
@@ -267,10 +243,7 @@ export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => voi
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => viewItem(item)}>
-                            <Eye className="mr-2 h-4 w-4" />View
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Share2 className="mr-2 h-4 w-4" />Share
+                            View
                           </DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive" onClick={() => deleteItem(item.id)}>
                             <Trash2 className="mr-2 h-4 w-4" />Delete
@@ -299,11 +272,10 @@ export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => voi
           ))}
         </div>
       )}
-
       {!isLoading && filteredHistory.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-6">
-            <Compass className="w-12 h-12 text-muted-foreground" />
+            <span style={{ fontSize: '48px' }}>🧭</span>
           </div>
           <h3 className="text-lg font-medium text-foreground mb-2">No history yet</h3>
           <p className="text-muted-foreground max-w-sm">Start exploring to build your history. Your conversations and landmark discoveries will appear here.</p>

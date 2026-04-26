@@ -67,6 +67,7 @@ export function VisionTab({ onTabChange }: { onTabChange?: (tab: string) => void
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [cameraError, setCameraError] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment')
   const currentUser = auth.currentUser;
 
   // Initialize camera on component mount
@@ -82,7 +83,7 @@ export function VisionTab({ onTabChange }: { onTabChange?: (tab: string) => void
         tracks.forEach(track => track.stop());
       }
     };
-  }, [cameraMode, uploadedImage]);
+  }, [cameraMode, uploadedImage, facingMode]);
 
   useEffect(() => {
     const historyData = localStorage.getItem('historyLandmark')
@@ -97,7 +98,14 @@ export function VisionTab({ onTabChange }: { onTabChange?: (tab: string) => void
   const initializeCamera = async () => {
     try {
       setCameraError(false);
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      // Stop existing stream first
+      if (videoRef.current?.srcObject) {
+        const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+        tracks.forEach(track => track.stop());
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: facingMode } 
+      });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
@@ -107,6 +115,25 @@ export function VisionTab({ onTabChange }: { onTabChange?: (tab: string) => void
       setCameraMode(false); // Fall back to upload mode
     }
   };
+
+  const flipCamera = async () => {
+    const newMode = facingMode === 'user' ? 'environment' : 'user'
+    setFacingMode(newMode)
+    try {
+      if (videoRef.current?.srcObject) {
+        const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+        tracks.forEach(track => track.stop());
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: newMode } 
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error('Flip camera error:', err);
+    }
+  }
 
   const captureSnapshot = () => {
     if (videoRef.current && canvasRef.current) {
@@ -309,6 +336,24 @@ export function VisionTab({ onTabChange }: { onTabChange?: (tab: string) => void
                     playsInline
                     className="w-full h-full object-cover"
                   />
+                  {/* Flip camera button */}
+                  <button
+                    onClick={flipCamera}
+                    style={{
+                      position: 'absolute', top: '10px', right: '10px',
+                      background: 'rgba(0,0,0,0.5)', border: 'none',
+                      borderRadius: '50%', width: '40px', height: '40px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', zIndex: 10
+                    }}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                      <path d="M20 7h-9"/>
+                      <path d="M14 17H5"/>
+                      <circle cx="17" cy="17" r="3"/>
+                      <circle cx="7" cy="7" r="3"/>
+                    </svg>
+                  </button>
                 </div>
                 <div className="flex gap-3">
                   <Button

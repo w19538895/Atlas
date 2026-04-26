@@ -28,6 +28,24 @@ export function ProfileTab() {
   const [stats, setStats] = useState({ voice: 0, chat: 0, landmarks: 0 })
   const [memberSince, setMemberSince] = useState('')
   const [playingVoice, setPlayingVoice] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [savingName, setSavingName] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [savingPassword, setSavingPassword] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
+  const [showCurrentPw, setShowCurrentPw] = useState(false)
+  const [showNewPw, setShowNewPw] = useState(false)
+  const [profilePicUrl, setProfilePicUrl] = useState<string | null>(null)
+  const [uploadingPic, setUploadingPic] = useState(false)
+  const [editingEmail, setEditingEmail] = useState(false)
+  const [newEmail, setNewEmail] = useState('')
+  const [emailPassword, setEmailPassword] = useState('')
+  const [savingEmail, setSavingEmail] = useState(false)
+  const [emailError, setEmailError] = useState('')
+  const [showEmailPw, setShowEmailPw] = useState(false)
 
   const selectedAvatarGender = avatars.find(a => a.id === selectedAvatar)?.gender || 'female'
   const filteredVoices = voices.filter(v => v.gender === selectedAvatarGender)
@@ -85,6 +103,109 @@ export function ProfileTab() {
     }
   }
 
+  const saveName = async () => {
+    if (!newName.trim()) return
+    setSavingName(true)
+    try {
+      const { updateProfile } = await import('firebase/auth')
+      const { auth } = await import('@/firebase.config')
+      const { db } = await import('@/firebase.config')
+      const { doc, setDoc } = await import('firebase/firestore')
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { displayName: newName.trim() })
+        await setDoc(doc(db, 'users', (user as any).uid), {
+          name: newName.trim(),
+          updatedAt: new Date().toISOString()
+        }, { merge: true })
+      }
+      setEditingName(false)
+    } catch (e) {
+      console.error('Save name error:', e)
+    } finally {
+      setSavingName(false)
+    }
+  }
+
+  const savePassword = async () => {
+    if (newPassword.length < 6) { setPasswordError('New password must be at least 6 characters'); return }
+    if (!currentPassword) { setPasswordError('Please enter your current password'); return }
+    setSavingPassword(true)
+    setPasswordError('')
+    try {
+      const { EmailAuthProvider, reauthenticateWithCredential, updatePassword } = await import('firebase/auth')
+      const { auth } = await import('@/firebase.config')
+      if (auth.currentUser && auth.currentUser.email) {
+        const credential = EmailAuthProvider.credential(auth.currentUser.email, currentPassword)
+        await reauthenticateWithCredential(auth.currentUser, credential)
+        await updatePassword(auth.currentUser, newPassword)
+      }
+      setChangingPassword(false)
+      setNewPassword('')
+      setCurrentPassword('')
+    } catch (e: any) {
+      if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') setPasswordError('Current password is incorrect')
+      else if (e.code === 'auth/requires-recent-login') setPasswordError('Please sign out and sign back in first')
+      else setPasswordError('Failed to update password')
+    } finally {
+      setSavingPassword(false)
+    }
+  }
+
+  const saveEmail = async () => {
+    if (!newEmail.trim() || !emailPassword) { setEmailError('Please fill in all fields'); return }
+    setSavingEmail(true)
+    setEmailError('')
+    try {
+      const { EmailAuthProvider, reauthenticateWithCredential, updateEmail } = await import('firebase/auth')
+      const { auth } = await import('@/firebase.config')
+      const { db } = await import('@/firebase.config')
+      const { doc, setDoc } = await import('firebase/firestore')
+      if (auth.currentUser && auth.currentUser.email) {
+        const credential = EmailAuthProvider.credential(auth.currentUser.email, emailPassword)
+        await reauthenticateWithCredential(auth.currentUser, credential)
+        await updateEmail(auth.currentUser, newEmail.trim())
+        await setDoc(doc(db, 'users', (user as any).uid), {
+          email: newEmail.trim(),
+          updatedAt: new Date().toISOString()
+        }, { merge: true })
+      }
+      setEditingEmail(false)
+      setNewEmail('')
+      setEmailPassword('')
+    } catch (e: any) {
+      if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') setEmailError('Incorrect password')
+      else if (e.code === 'auth/invalid-email') setEmailError('Invalid email address')
+      else if (e.code === 'auth/email-already-in-use') setEmailError('Email already in use')
+      else if (e.code === 'auth/requires-recent-login') setEmailError('Please sign out and sign back in first')
+      else setEmailError('Failed to update email')
+    } finally {
+      setSavingEmail(false)
+    }
+  }
+
+  const uploadProfilePic = async (file: File) => {
+    if (!file) return
+    setUploadingPic(true)
+    try {
+      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage')
+      const { db } = await import('@/firebase.config')
+      const { storage } = await import('@/firebase.config')
+      const { doc, setDoc } = await import('firebase/firestore')
+      const storageRef = ref(storage, `profilePics/${(user as any).uid}`)
+      await uploadBytes(storageRef, file)
+      const url = await getDownloadURL(storageRef)
+      setProfilePicUrl(url)
+      await setDoc(doc(db, 'userProfiles', (user as any).uid), {
+        profilePicUrl: url,
+        updatedAt: new Date().toISOString()
+      }, { merge: true })
+    } catch (e) {
+      console.error('Upload error:', e)
+    } finally {
+      setUploadingPic(false)
+    }
+  }
+
   const loadProfile = async () => {
     try {
       const { db } = await import('@/firebase.config')
@@ -96,6 +217,10 @@ export function ProfileTab() {
         if (data.avatar) setSelectedAvatar(data.avatar)
         if (data.voice) setSelectedVoice(data.voice)
         if (data.responseLength) setResponseLength(data.responseLength)
+        if (data.profilePicUrl) setProfilePicUrl(data.profilePicUrl)
+      } else {
+        setSelectedAvatar('avatar1')
+        setSelectedVoice('nova')
       }
     } catch (e) {
       console.error('Load profile error:', e)
@@ -125,6 +250,7 @@ export function ProfileTab() {
   const nameInitial = ((user as any)?.displayName || (user as any)?.email || 'U').charAt(0).toUpperCase()
 
   return (
+    <>
     <div style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', paddingBottom: '80px', width: '100%', boxSizing: 'border-box' }}>
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px 24px', boxSizing: 'border-box', width: '100%' }}>
 
@@ -132,28 +258,40 @@ export function ProfileTab() {
         <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '16px', padding: '20px', marginBottom: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', flexShrink: 0 }}>
-              <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 500, color: '#0c4a6e' }}>
-                {nameInitial}
-              </div>
-              <div style={{ position: 'absolute', bottom: 0, right: 0, width: '22px', height: '22px', borderRadius: '50%', background: '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              {profilePicUrl ? (
+                <img
+                  src={profilePicUrl}
+                  alt="Profile"
+                  style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover' }}
+                />
+              ) : (
+                <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 500, color: '#0c4a6e' }}>
+                  {nameInitial}
+                </div>
+              )}
+              <label style={{ position: 'absolute', bottom: 0, right: 0, width: '22px', height: '22px', borderRadius: '50%', background: uploadingPic ? '#9ca3af' : '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadProfilePic(f) }} />
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-              </div>
+              </label>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
                 <span style={{ fontSize: '16px', fontWeight: 500, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {(user as any)?.displayName || 'Traveler'}
                 </span>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" strokeWidth="2" style={{ cursor: 'pointer', flexShrink: 0 }}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" strokeWidth="2" style={{ cursor: 'pointer', flexShrink: 0 }} onClick={() => { setNewName((user as any)?.displayName || ''); setEditingName(true) }}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '2px' }}>
-                {(user as any)?.email || ''}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '2px' }}>
+                <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {(user as any)?.email || ''}
+                </span>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" strokeWidth="2" style={{ cursor: 'pointer', flexShrink: 0 }} onClick={() => { setNewEmail((user as any)?.email || ''); setEditingEmail(true) }}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               </div>
               <div style={{ fontSize: '11px', color: 'var(--color-text-tertiary)' }}>
                 Member since {memberSince || 'January 2024'}
               </div>
             </div>
-            <button style={{ padding: '8px 16px', borderRadius: '10px', border: '0.5px solid var(--color-border-secondary)', background: 'var(--color-background-secondary)', fontSize: '12px', color: 'var(--color-text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <button onClick={() => setChangingPassword(true)} style={{ padding: '8px 18px', borderRadius: '10px', border: '0.5px solid var(--color-border-secondary)', background: 'var(--color-background-secondary)', fontSize: '12px', color: 'var(--color-text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
               Change password
             </button>
           </div>
@@ -210,16 +348,14 @@ export function ProfileTab() {
               </div>
             ))}
           </div>
-          <div style={{ fontSize: '10px', color: 'var(--color-text-tertiary)', marginTop: '8px' }}>
-            Luna, Nova, Sage = female · Blaze, Orion, Rex = male
-          </div>
+
           </div>
 
           {/* Voice Selection */}
           <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '16px', padding: '16px' }}>
             <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '14px', paddingBottom: '10px', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>Atlas voice</div>
             {filteredVoices.map((voice, i) => (
-            <div key={voice.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: i < filteredVoices.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
+            <div key={voice.id} onClick={() => { setSelectedVoice(voice.id); saveProfile({ voice: voice.id }) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', cursor: 'pointer', borderBottom: i < filteredVoices.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button
                   onClick={() => previewVoice(voice.id)}
@@ -243,19 +379,12 @@ export function ProfileTab() {
                 )}
                 {selectedVoice !== voice.id && (
                   <div
-                    onClick={() => {
-                      setSelectedVoice(voice.id)
-                      saveProfile({ voice: voice.id })
-                    }}
                     style={{ width: '16px', height: '16px', borderRadius: '50%', border: '0.5px solid var(--color-border-secondary)', cursor: 'pointer', flexShrink: 0 }}
                   />
                 )}
               </div>
             </div>
           ))}
-          <div style={{ marginTop: '10px', padding: '8px 10px', background: 'var(--color-background-secondary)', borderRadius: '10px', fontSize: '10px', color: 'var(--color-text-tertiary)' }}>
-            {selectedAvatarGender === 'female' ? 'Showing female voices — select a male avatar to see male voices' : 'Showing male voices — select a female avatar to see female voices'}
-          </div>
           </div>
 
         </div>
@@ -305,5 +434,121 @@ export function ProfileTab() {
 
       </div>
     </div>
+
+    {/* Edit Name Modal - OUTSIDE scroll container */}
+    {editingName && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+        onClick={() => setEditingName(false)}>
+        <div style={{ background: 'white', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '360px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
+          onClick={e => e.stopPropagation()}>
+          <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '16px' }}>Edit display name</div>
+          <input
+            type="text"
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            placeholder="Your name"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '0.5px solid var(--color-border-secondary)', fontSize: '13px', color: 'var(--color-text-primary)', background: 'var(--color-background-secondary)', marginBottom: '12px', boxSizing: 'border-box', outline: 'none' }}
+          />
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={() => setEditingName(false)} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '0.5px solid var(--color-border-secondary)', background: 'var(--color-background-secondary)', fontSize: '13px', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
+              Cancel
+            </button>
+            <button onClick={saveName} disabled={savingName} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: '#0ea5e9', fontSize: '13px', cursor: 'pointer', color: 'white', fontWeight: 500 }}>
+              {savingName ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Change Password Modal - OUTSIDE scroll container */}
+    {changingPassword && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+        onClick={() => setChangingPassword(false)}>
+        <div style={{ background: 'white', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '360px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
+          onClick={e => e.stopPropagation()}>
+          <div style={{ fontSize: '15px', fontWeight: 500, color: '#111827', marginBottom: '16px' }}>Change password</div>
+
+          {/* Current password with peek */}
+          <div style={{ position: 'relative', marginBottom: '8px' }}>
+            <input
+              type={showCurrentPw ? 'text' : 'password'}
+              value={currentPassword}
+              onChange={e => setCurrentPassword(e.target.value)}
+              placeholder="Current password"
+              style={{ width: '100%', padding: '10px 40px 10px 12px', borderRadius: '10px', border: '0.5px solid #e5e7eb', fontSize: '13px', color: '#111827', background: '#f9fafb', boxSizing: 'border-box', outline: 'none' }}
+            />
+            <button onClick={() => setShowCurrentPw(p => !p)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '11px' }}>
+              {showCurrentPw ? 'Hide' : 'Show'}
+            </button>
+          </div>
+
+          {/* New password with peek */}
+          <div style={{ position: 'relative', marginBottom: '8px' }}>
+            <input
+              type={showNewPw ? 'text' : 'password'}
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              placeholder="New password (min 6 characters)"
+              style={{ width: '100%', padding: '10px 40px 10px 12px', borderRadius: '10px', border: '0.5px solid #e5e7eb', fontSize: '13px', color: '#111827', background: '#f9fafb', boxSizing: 'border-box', outline: 'none' }}
+            />
+            <button onClick={() => setShowNewPw(p => !p)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '11px' }}>
+              {showNewPw ? 'Hide' : 'Show'}
+            </button>
+          </div>
+
+          {passwordError && <div style={{ fontSize: '11px', color: '#dc2626', marginBottom: '8px' }}>{passwordError}</div>}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={() => { setChangingPassword(false); setPasswordError(''); setNewPassword(''); setCurrentPassword(''); setShowCurrentPw(false); setShowNewPw(false) }} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '0.5px solid #e5e7eb', background: '#f9fafb', fontSize: '13px', cursor: 'pointer', color: '#6b7280' }}>
+              Cancel
+            </button>
+            <button onClick={savePassword} disabled={savingPassword} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: '#0ea5e9', fontSize: '13px', cursor: 'pointer', color: 'white', fontWeight: 500 }}>
+              {savingPassword ? 'Saving...' : 'Update'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Change Email Modal - OUTSIDE scroll container */}
+    {editingEmail && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+        onClick={() => setEditingEmail(false)}>
+        <div style={{ background: 'white', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '360px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
+          onClick={e => e.stopPropagation()}>
+          <div style={{ fontSize: '15px', fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '6px' }}>Change email</div>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '16px' }}>Enter your new email and current password to confirm</div>
+          <input
+            type="email"
+            value={newEmail}
+            onChange={e => setNewEmail(e.target.value)}
+            placeholder="New email address"
+            style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '0.5px solid var(--color-border-secondary)', fontSize: '13px', color: 'var(--color-text-primary)', background: 'var(--color-background-secondary)', marginBottom: '8px', boxSizing: 'border-box', outline: 'none' }}
+          />
+          <div style={{ position: 'relative', marginBottom: '8px' }}>
+            <input
+              type={showEmailPw ? 'text' : 'password'}
+              value={emailPassword}
+              onChange={e => setEmailPassword(e.target.value)}
+              placeholder="Current password to confirm"
+              style={{ width: '100%', padding: '10px 40px 10px 12px', borderRadius: '10px', border: '0.5px solid #e5e7eb', fontSize: '13px', color: '#111827', background: '#f9fafb', boxSizing: 'border-box', outline: 'none' }}
+            />
+            <button onClick={() => setShowEmailPw(p => !p)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '11px' }}>
+              {showEmailPw ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          {emailError && <div style={{ fontSize: '11px', color: '#dc2626', marginBottom: '8px' }}>{emailError}</div>}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={() => { setEditingEmail(false); setEmailError(''); setNewEmail(''); setEmailPassword(''); setShowEmailPw(false) }} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '0.5px solid var(--color-border-secondary)', background: 'var(--color-background-secondary)', fontSize: '13px', cursor: 'pointer', color: 'var(--color-text-secondary)' }}>
+              Cancel
+            </button>
+            <button onClick={saveEmail} disabled={savingEmail} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none', background: '#0ea5e9', fontSize: '13px', cursor: 'pointer', color: 'white', fontWeight: 500 }}>
+              {savingEmail ? 'Updating...' : 'Update email'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

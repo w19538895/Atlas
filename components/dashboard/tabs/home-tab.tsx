@@ -23,12 +23,13 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
   const [messages, setMessages] = useState<Message[]>([])
   const [suggestions, setSuggestions] = useState<string[]>(defaultSuggestions)
   const [avatarStatus, setAvatarStatus] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle')
-  const [avatarImg, setAvatarImg] = useState('/atlas-avatar.png')
+  const [avatarImg, setAvatarImg] = useState<string | null>(null)
   const [isAudioMuted, setIsAudioMuted] = useState(false)
   const sessionId = useRef(Date.now().toString())
   const recognitionRef = useRef<any>(null)
   const isAudioMutedRef = useRef(false)
   const selectedVoiceRef = useRef('shimmer')
+  const responseMode = useRef<'short' | 'detailed'>('short')
   const isSpeakingRef = useRef(false)
   const messagesRef = useRef<Message[]>([])
   const pendingVisionRef = useRef<string | null>(null)
@@ -91,9 +92,13 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
               avatar5: '/avatars/avatar-orion.png',
               avatar6: '/avatars/avatar-rex.png',
             }
-            setAvatarImg(avatarMap[data.avatar] || '/atlas-avatar.png')
+            setAvatarImg(avatarMap[data.avatar] || '/avatars/avatar-luna.png')
           }
           if (data.voice) selectedVoiceRef.current = data.voice
+          if (data.responseLength) responseMode.current = data.responseLength
+        } else {
+          setAvatarImg('/avatars/avatar-luna.png')
+          selectedVoiceRef.current = 'nova'
         }
       } catch {}
     }
@@ -195,6 +200,21 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
     }
   }
 
+  // ── GET RESPONSE MODE ──
+  const getResponseMode = async (): Promise<string> => {
+    try {
+      const { db } = await import('@/firebase.config')
+      const { doc, getDoc } = await import('firebase/firestore')
+      const snap = await getDoc(doc(db, 'userProfiles', (currentUser as any).uid))
+      const mode = snap.exists() ? snap.data().responseLength : 'short'
+      return mode === 'detailed'
+        ? 'Give helpful, conversational responses. Use plain sentences only, no bullet points, no numbered lists, no bold text.'
+        : 'Keep responses to 3 sentences maximum. Be direct and straight to the point. No bullet points, no numbered lists, no bold text. Plain conversational sentences only.'
+    } catch {
+      return 'Keep responses to 3 sentences maximum. Be direct and straight to the point. No bullet points, no numbered lists, no bold text. Plain conversational sentences only.'
+    }
+  }
+
   // ── HANDLE MESSAGE ──
   const handleUserMessage = useCallback(async (text: string) => {
     if (!text.trim()) return
@@ -203,12 +223,13 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
     const updated = [...messagesRef.current, userMsg]
     setMessages(updated)
     try {
+      const responseModePref = await getResponseMode()
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: updated.map(m => ({ role: m.role, content: m.content })),
-          systemPrompt: `You are Atlas, a friendly AI travel guide. Only answer travel questions. Keep responses under 4 sentences. Always end with a question.${locationName ? ` User is near ${locationName}.` : ''}`
+          systemPrompt: `You are Atlas, a friendly AI travel guide. Only answer travel questions. ${responseModePref} Always end with a question.${locationName ? ` User is near ${locationName}.` : ''}`
         })
       })
       const data = await res.json()
@@ -344,7 +365,9 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
 
         <div className={getAvatarClass()} style={{ position: 'relative', borderRadius: '24px', height: 'min(60vw, 560px)', maxHeight: '560px', minHeight: '280px', aspectRatio: '3/4', width: 'auto', borderWidth: '4px', borderColor: avatarStatus === 'speaking' ? '#ef4444' : avatarStatus === 'listening' ? '#10b981' : avatarStatus === 'thinking' ? '#f59e0b' : '#d1d5db', borderStyle: 'solid', transition: 'border-color 0.3s ease' }}>
           <div style={{ width: '100%', height: '100%', borderRadius: '20px', overflow: 'hidden', background: '#f0f9ff' }}>
-            <img src={avatarImg} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} alt="Atlas" />
+            {avatarImg && (
+              <img src={avatarImg} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} alt="Atlas" />
+            )}
           </div>
 
           {/* Status pill */}

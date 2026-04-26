@@ -63,6 +63,7 @@ export function ChatTab({ onTabChange }: { onTabChange?: (tab: string) => void }
   const inputRef = useRef<HTMLInputElement>(null);
   const { latitude, longitude, locationName } = useLocation();
   const currentUser = auth.currentUser;
+  const responseMode = useRef<'short' | 'detailed'>('short')
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -71,6 +72,21 @@ export function ChatTab({ onTabChange }: { onTabChange?: (tab: string) => void }
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (!currentUser) return
+    const loadResponseMode = async () => {
+      try {
+        const { db } = await import('@/firebase.config')
+        const { doc, getDoc } = await import('firebase/firestore')
+        const snap = await getDoc(doc(db, 'userProfiles', (currentUser as any).uid))
+        if (snap.exists() && snap.data().responseLength) {
+          responseMode.current = snap.data().responseLength
+        }
+      } catch {}
+    }
+    loadResponseMode()
+  }, [currentUser])
 
   useEffect(() => {
     // Check for landmark data from vision tab every time tab becomes visible
@@ -335,6 +351,20 @@ export function ChatTab({ onTabChange }: { onTabChange?: (tab: string) => void }
     }
   };
 
+  // ── GET RESPONSE MODE ──
+  const getResponseMode = async (): Promise<string> => {
+    try {
+      const { doc, getDoc } = await import('firebase/firestore')
+      const snap = await getDoc(doc(db, 'userProfiles', (currentUser as any).uid))
+      const mode = snap.exists() ? snap.data().responseLength : 'short'
+      return mode === 'detailed'
+        ? 'Give helpful, conversational responses. Use plain sentences only, no bullet points, no numbered lists, no bold text.'
+        : 'Keep responses to 3 sentences maximum. Be direct and straight to the point. No bullet points, no numbered lists, no bold text. Plain conversational sentences only.'
+    } catch {
+      return 'CRITICAL: Maximum 2 sentences only. No bullet points. No numbered lists. No bold text. Plain conversational sentences only.'
+    }
+  }
+
   const sendMessage = async (content: string) => {
     if (!content.trim()) return;
 
@@ -360,13 +390,17 @@ export function ChatTab({ onTabChange }: { onTabChange?: (tab: string) => void }
           content: msg.content,
         }));
 
+      // Get response mode from Firebase
+      const responseModePref = await getResponseMode();
+
       // Get AI response
       const response = await sendChatMessage(
         content.trim(),
         conversationHistory,
         locationName,
         latitude,
-        longitude
+        longitude,
+        responseModePref
       );
 
       const assistantMessage: Message = {

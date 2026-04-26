@@ -10,18 +10,25 @@ export interface ChatMessage {
   content: string;
 }
 
-const SYSTEM_PROMPT = `You are Atlas, an enthusiastic and knowledgeable AI tour guide companion. Your purpose is to help travelers discover and learn about landmarks, attractions, and destinations worldwide. Be friendly, engaging, and informative. Share interesting facts and historical context. Always encourage users to ask questions by ending responses with prompts like 'Would you like to know more about this?' or 'What else would you like to explore?' Keep responses conversational and under 150 words unless the user asks for more detail.`;
+const SYSTEM_PROMPT = `You are Atlas, an enthusiastic and knowledgeable AI tour guide companion. Your purpose is to help travelers discover and learn about landmarks, attractions, and destinations worldwide. Be friendly, engaging, and informative. Share interesting facts and historical context. Always encourage users to ask questions by ending responses with prompts like 'Would you like to know more about this?' or 'What else would you like to explore?' CRITICAL: Keep responses conversational and under 2 sentences. No bullet points, no numbered lists, no bold formatting.`;
 
 export async function sendChatMessage(
   userMessage: string,
   conversationHistory: ChatMessage[],
   locationName?: string | null,
   latitude?: number | null,
-  longitude?: number | null
+  longitude?: number | null,
+  responseMode?: string
 ): Promise<string> {
   try {
     // Build system prompt with location if available
     let systemPrompt = SYSTEM_PROMPT;
+    
+    // Override system prompt with response mode if provided
+    if (responseMode) {
+      systemPrompt = `You are Atlas, a friendly AI travel guide. Only answer travel questions. ${responseMode} Always end with a question.`;
+    }
+    
     if (locationName && latitude && longitude) {
       systemPrompt += `\n\nUser is currently near ${locationName} (lat: ${latitude}, lon: ${longitude}). Use this to give more accurate and relevant travel recommendations.`;
     }

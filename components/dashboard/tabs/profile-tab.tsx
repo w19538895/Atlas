@@ -12,12 +12,12 @@ const voices = [
 ]
 
 const avatars = [
-  { id: 'avatar1', label: 'Luna', gender: 'female', color: '#bae6fd', stroke: '#0ea5e9' },
-  { id: 'avatar2', label: 'Nova', gender: 'female', color: '#fce7f3', stroke: '#db2777' },
-  { id: 'avatar3', label: 'Sage', gender: 'female', color: '#d1fae5', stroke: '#059669' },
-  { id: 'avatar4', label: 'Blaze', gender: 'male', color: '#fef3c7', stroke: '#d97706' },
-  { id: 'avatar5', label: 'Orion', gender: 'male', color: '#ede9fe', stroke: '#7c3aed' },
-  { id: 'avatar6', label: 'Rex', gender: 'male', color: '#fee2e2', stroke: '#dc2626' },
+  { id: 'avatar1', label: 'Luna', gender: 'female', img: '/avatars/avatar-luna.png' },
+  { id: 'avatar2', label: 'Nova', gender: 'female', img: '/avatars/avatar-nova.png' },
+  { id: 'avatar3', label: 'Sage', gender: 'female', img: '/avatars/avatar-sage.png' },
+  { id: 'avatar4', label: 'Blaze', gender: 'male', img: '/avatars/avatar-blaze.png' },
+  { id: 'avatar5', label: 'Orion', gender: 'male', img: '/avatars/avatar-orion.png' },
+  { id: 'avatar6', label: 'Rex', gender: 'male', img: '/avatars/avatar-rex.png' },
 ]
 
 export function ProfileTab() {
@@ -35,6 +35,7 @@ export function ProfileTab() {
   useEffect(() => {
     if (!user) return
     loadStats()
+    loadProfile()
   }, [user])
 
   const loadStats = async () => {
@@ -67,6 +68,37 @@ export function ProfileTab() {
       }
     } catch (e) {
       console.error('Stats load error:', e)
+    }
+  }
+
+  const saveProfile = async (data: { avatar?: string; voice?: string; responseLength?: string }) => {
+    try {
+      const { db } = await import('@/firebase.config')
+      const { doc, setDoc } = await import('firebase/firestore')
+      const uid = (user as any).uid
+      await setDoc(doc(db, 'userProfiles', uid), {
+        ...data,
+        updatedAt: new Date().toISOString()
+      }, { merge: true })
+    } catch (e) {
+      console.error('Save profile error:', e)
+    }
+  }
+
+  const loadProfile = async () => {
+    try {
+      const { db } = await import('@/firebase.config')
+      const { doc, getDoc } = await import('firebase/firestore')
+      const uid = (user as any).uid
+      const snap = await getDoc(doc(db, 'userProfiles', uid))
+      if (snap.exists()) {
+        const data = snap.data()
+        if (data.avatar) setSelectedAvatar(data.avatar)
+        if (data.voice) setSelectedVoice(data.voice)
+        if (data.responseLength) setResponseLength(data.responseLength)
+      }
+    } catch (e) {
+      console.error('Load profile error:', e)
     }
   }
 
@@ -151,22 +183,27 @@ export function ProfileTab() {
                 key={avatar.id}
                 onClick={() => {
                   setSelectedAvatar(avatar.id)
-                  // Reset voice to first available for new gender
                   const newGender = avatars.find(a => a.id === avatar.id)?.gender || 'female'
                   const firstVoice = voices.find(v => v.gender === newGender)
-                  if (firstVoice) setSelectedVoice(firstVoice.id)
+                  if (firstVoice) {
+                    setSelectedVoice(firstVoice.id)
+                    saveProfile({ avatar: avatar.id, voice: firstVoice.id })
+                  } else {
+                    saveProfile({ avatar: avatar.id })
+                  }
                 }}
-                style={{ width: '48px', height: '48px', borderRadius: '12px', border: `2px solid ${selectedAvatar === avatar.id ? '#0ea5e9' : 'var(--color-border-tertiary)'}`, overflow: 'hidden', cursor: 'pointer', position: 'relative', flexShrink: 0 }}
+                style={{ width: '56px', height: '56px', borderRadius: '12px', border: `2px solid ${selectedAvatar === avatar.id ? '#0ea5e9' : 'var(--color-border-tertiary)'}`, overflow: 'hidden', cursor: 'pointer', position: 'relative', flexShrink: 0 }}
               >
-                <div style={{ width: '100%', height: '100%', background: avatar.color, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={avatar.stroke} strokeWidth="1.5">
-                    <circle cx="12" cy="8" r="4"/>
-                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-                  </svg>
-                  <span style={{ fontSize: '8px', color: avatar.stroke, fontWeight: 500 }}>{avatar.label}</span>
+                <img
+                  src={avatar.img}
+                  alt={avatar.label}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.35)', padding: '2px 0', textAlign: 'center' }}>
+                  <span style={{ fontSize: '8px', color: 'white', fontWeight: 500 }}>{avatar.label}</span>
                 </div>
                 {selectedAvatar === avatar.id && (
-                  <div style={{ position: 'absolute', top: '2px', right: '2px', width: '14px', height: '14px', borderRadius: '50%', background: '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ position: 'absolute', top: '3px', right: '3px', width: '14px', height: '14px', borderRadius: '50%', background: '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                   </div>
                 )}
@@ -206,7 +243,10 @@ export function ProfileTab() {
                 )}
                 {selectedVoice !== voice.id && (
                   <div
-                    onClick={() => setSelectedVoice(voice.id)}
+                    onClick={() => {
+                      setSelectedVoice(voice.id)
+                      saveProfile({ voice: voice.id })
+                    }}
                     style={{ width: '16px', height: '16px', borderRadius: '50%', border: '0.5px solid var(--color-border-secondary)', cursor: 'pointer', flexShrink: 0 }}
                   />
                 )}
@@ -231,7 +271,10 @@ export function ProfileTab() {
               {(['short', 'detailed'] as const).map(opt => (
                 <button
                   key={opt}
-                  onClick={() => setResponseLength(opt)}
+                  onClick={() => {
+                    setResponseLength(opt)
+                    saveProfile({ responseLength: opt })
+                  }}
                   style={{ padding: '7px 16px', borderRadius: '20px', border: '0.5px solid var(--color-border-secondary)', fontSize: '12px', cursor: 'pointer', background: responseLength === opt ? '#0ea5e9' : 'var(--color-background-primary)', color: responseLength === opt ? 'white' : 'var(--color-text-secondary)', fontWeight: responseLength === opt ? 500 : 400 }}
                 >
                   {opt === 'short' ? 'Short & snappy' : 'Detailed'}

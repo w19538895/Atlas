@@ -23,10 +23,12 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
   const [messages, setMessages] = useState<Message[]>([])
   const [suggestions, setSuggestions] = useState<string[]>(defaultSuggestions)
   const [avatarStatus, setAvatarStatus] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle')
+  const [avatarImg, setAvatarImg] = useState('/atlas-avatar.png')
   const [isAudioMuted, setIsAudioMuted] = useState(false)
   const sessionId = useRef(Date.now().toString())
   const recognitionRef = useRef<any>(null)
   const isAudioMutedRef = useRef(false)
+  const selectedVoiceRef = useRef('shimmer')
   const isSpeakingRef = useRef(false)
   const messagesRef = useRef<Message[]>([])
   const pendingVisionRef = useRef<string | null>(null)
@@ -70,6 +72,33 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
       }
     } catch (e) { console.error(e) }
   }, [])
+
+  useEffect(() => {
+    if (!currentUser) return
+    const loadAvatar = async () => {
+      try {
+        const { db } = await import('@/firebase.config')
+        const { doc, getDoc } = await import('firebase/firestore')
+        const snap = await getDoc(doc(db, 'userProfiles', (currentUser as any).uid))
+        if (snap.exists()) {
+          const data = snap.data()
+          if (data.avatar) {
+            const avatarMap: Record<string, string> = {
+              avatar1: '/avatars/avatar-luna.png',
+              avatar2: '/avatars/avatar-nova.png',
+              avatar3: '/avatars/avatar-sage.png',
+              avatar4: '/avatars/avatar-blaze.png',
+              avatar5: '/avatars/avatar-orion.png',
+              avatar6: '/avatars/avatar-rex.png',
+            }
+            setAvatarImg(avatarMap[data.avatar] || '/atlas-avatar.png')
+          }
+          if (data.voice) selectedVoiceRef.current = data.voice
+        }
+      } catch {}
+    }
+    loadAvatar()
+  }, [currentUser])
 
   // ── SUGGESTIONS — exact copy from chat-tab.tsx ──
   const generateSuggestions = async (chatMessages: Message[]) => {
@@ -150,7 +179,7 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
       const res = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: clean })
+        body: JSON.stringify({ text: clean, voice: selectedVoiceRef.current })
       })
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
@@ -193,7 +222,7 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
           const ttsRes = await fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: reply })
+            body: JSON.stringify({ text: reply, voice: selectedVoiceRef.current })
           })
           const arrayBuffer = await ttsRes.arrayBuffer()
           const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext
@@ -315,7 +344,7 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
 
         <div className={getAvatarClass()} style={{ position: 'relative', borderRadius: '24px', height: 'min(60vw, 560px)', maxHeight: '560px', minHeight: '280px', aspectRatio: '3/4', width: 'auto', borderWidth: '4px', borderColor: avatarStatus === 'speaking' ? '#ef4444' : avatarStatus === 'listening' ? '#10b981' : avatarStatus === 'thinking' ? '#f59e0b' : '#d1d5db', borderStyle: 'solid', transition: 'border-color 0.3s ease' }}>
           <div style={{ width: '100%', height: '100%', borderRadius: '20px', overflow: 'hidden', background: '#f0f9ff' }}>
-            <img src="/atlas-avatar.png" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} alt="Atlas" />
+            <img src={avatarImg} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }} alt="Atlas" />
           </div>
 
           {/* Status pill */}

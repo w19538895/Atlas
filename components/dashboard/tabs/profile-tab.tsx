@@ -1,469 +1,266 @@
-"use client";
+'use client'
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/lib/auth-context'
 
-import { useState } from "react";
-import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Camera,
-  Pencil,
-  Backpack,
-  Palmtree,
-  Landmark,
-  UtensilsCrossed,
-  CameraIcon,
-  Dumbbell,
-  Palette,
-  DollarSign,
-  CreditCard,
-  Banknote,
-  Globe,
-  Volume2,
-  Sun,
-  Moon,
-  Bell,
-  MapPin,
-  Castle,
-  Theater,
-  Wine,
-  ShoppingBag,
-  TreePine,
-  Waves,
-  Mountain,
-  Soup,
-  Building,
-  Ticket,
-  LogOut,
-  RotateCcw,
-  Check,
-} from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+const voices = [
+  { id: 'nova', label: 'Nova', desc: 'Warm & friendly', gender: 'female' },
+  { id: 'shimmer', label: 'Shimmer', desc: 'Clear & professional', gender: 'female' },
+  { id: 'alloy', label: 'Alloy', desc: 'Neutral & calm', gender: 'female' },
+  { id: 'echo', label: 'Echo', desc: 'Deep & confident', gender: 'male' },
+  { id: 'onyx', label: 'Onyx', desc: 'Rich & authoritative', gender: 'male' },
+  { id: 'fable', label: 'Fable', desc: 'Expressive & lively', gender: 'male' },
+]
 
-const travelStyles = [
-  { id: "adventure", label: "Adventure Seeker", icon: Backpack },
-  { id: "relaxation", label: "Relaxation Focused", icon: Palmtree },
-  { id: "cultural", label: "Cultural Explorer", icon: Landmark },
-  { id: "food", label: "Food Enthusiast", icon: UtensilsCrossed },
-  { id: "photography", label: "Photography Lover", icon: CameraIcon },
-  { id: "active", label: "Active Traveler", icon: Dumbbell },
-  { id: "art", label: "Art & Architecture", icon: Palette },
-];
-
-const budgetOptions = [
-  { id: "budget", label: "Budget-Friendly", description: "Under $50/day", icon: DollarSign },
-  { id: "moderate", label: "Moderate", description: "$50-150/day", icon: Banknote },
-  { id: "luxury", label: "Luxury", description: "$150+/day", icon: CreditCard },
-];
-
-const interests = [
-  { id: "historical", label: "Historical Sites", icon: Castle },
-  { id: "entertainment", label: "Entertainment", icon: Theater },
-  { id: "nightlife", label: "Nightlife", icon: Wine },
-  { id: "shopping", label: "Shopping", icon: ShoppingBag },
-  { id: "nature", label: "Nature & Parks", icon: TreePine },
-  { id: "beaches", label: "Beaches", icon: Waves },
-  { id: "mountains", label: "Mountains", icon: Mountain },
-  { id: "cuisine", label: "Local Cuisine", icon: Soup },
-  { id: "museums", label: "Museums", icon: Building },
-  { id: "events", label: "Events & Festivals", icon: Ticket },
-];
-
-const languages = [
-  "English",
-  "Spanish",
-  "French",
-  "German",
-  "Italian",
-  "Portuguese",
-  "Chinese",
-  "Japanese",
-  "Korean",
-  "Arabic",
-  "Hindi",
-  "Russian",
-];
+const avatars = [
+  { id: 'avatar1', label: 'Luna', gender: 'female', color: '#bae6fd', stroke: '#0ea5e9' },
+  { id: 'avatar2', label: 'Nova', gender: 'female', color: '#fce7f3', stroke: '#db2777' },
+  { id: 'avatar3', label: 'Sage', gender: 'female', color: '#d1fae5', stroke: '#059669' },
+  { id: 'avatar4', label: 'Blaze', gender: 'male', color: '#fef3c7', stroke: '#d97706' },
+  { id: 'avatar5', label: 'Orion', gender: 'male', color: '#ede9fe', stroke: '#7c3aed' },
+  { id: 'avatar6', label: 'Rex', gender: 'male', color: '#fee2e2', stroke: '#dc2626' },
+]
 
 export function ProfileTab() {
-  const { user, logout } = useAuth();
-  const [selectedStyles, setSelectedStyles] = useState<string[]>(["cultural", "food"]);
-  const [selectedBudget, setSelectedBudget] = useState("moderate");
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([
-    "historical",
-    "cuisine",
-    "museums",
-  ]);
-  const [language, setLanguage] = useState("English");
-  const [voiceSpeed, setVoiceSpeed] = useState([50]);
-  const [voiceGender, setVoiceGender] = useState<"male" | "female">("female");
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [theme, setTheme] = useState<"light" | "dark" | "auto">("auto");
-  const [notifications, setNotifications] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const { user, logout } = useAuth()
+  const [selectedAvatar, setSelectedAvatar] = useState('avatar1')
+  const [selectedVoice, setSelectedVoice] = useState('nova')
+  const [responseLength, setResponseLength] = useState<'short' | 'detailed'>('short')
+  const [stats, setStats] = useState({ voice: 0, chat: 0, landmarks: 0 })
+  const [memberSince, setMemberSince] = useState('')
+  const [playingVoice, setPlayingVoice] = useState<string | null>(null)
 
-  const toggleStyle = (id: string) => {
-    setSelectedStyles((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-    );
-  };
+  const selectedAvatarGender = avatars.find(a => a.id === selectedAvatar)?.gender || 'female'
+  const filteredVoices = voices.filter(v => v.gender === selectedAvatarGender)
 
-  const toggleInterest = (id: string) => {
-    setSelectedInterests((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
-  };
+  useEffect(() => {
+    if (!user) return
+    loadStats()
+  }, [user])
 
-  const handleSave = () => {
-    setIsSaving(true);
-    setTimeout(() => setIsSaving(false), 1500);
-  };
+  const loadStats = async () => {
+    try {
+      const { db } = await import('@/firebase.config')
+      const { collection, query, where, getDocs } = await import('firebase/firestore')
+      const uid = (user as any).uid
 
-  const handleReset = () => {
-    setSelectedStyles(["cultural", "food"]);
-    setSelectedBudget("moderate");
-    setSelectedInterests(["historical", "cuisine", "museums"]);
-    setLanguage("English");
-    setVoiceSpeed([50]);
-    setVoiceGender("female");
-    setVoiceEnabled(true);
-    setTheme("auto");
-    setNotifications(true);
-  };
+      const [chatDocs, avatarDocs, visionDocs] = await Promise.all([
+        getDocs(query(collection(db, 'chatHistory'), where('userId', '==', uid))),
+        getDocs(query(collection(db, 'avatarHistory'), where('userId', '==', uid))),
+        getDocs(query(collection(db, 'visionHistory'), where('userId', '==', uid))),
+      ])
+
+      setStats({
+        chat: chatDocs.size,
+        voice: avatarDocs.size,
+        landmarks: visionDocs.size,
+      })
+
+      // Get member since from users collection
+      const { doc, getDoc } = await import('firebase/firestore')
+      const userDoc = await getDoc(doc(db, 'users', uid))
+      if (userDoc.exists()) {
+        const data = userDoc.data()
+        if (data.createdAt) {
+          const date = new Date(data.createdAt)
+          setMemberSince(date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }))
+        }
+      }
+    } catch (e) {
+      console.error('Stats load error:', e)
+    }
+  }
+
+  const previewVoice = async (voiceId: string) => {
+    if (playingVoice) return
+    setPlayingVoice(voiceId)
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: `Hi, I'm Atlas, your personal travel guide!`, voice: voiceId })
+      })
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const audio = new Audio(url)
+      audio.onended = () => { setPlayingVoice(null); URL.revokeObjectURL(url) }
+      audio.onerror = () => { setPlayingVoice(null) }
+      await audio.play()
+    } catch {
+      setPlayingVoice(null)
+    }
+  }
+
+  const nameInitial = ((user as any)?.displayName || (user as any)?.email || 'U').charAt(0).toUpperCase()
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', paddingBottom: '80px' }}><div className="max-w-2xl mx-auto px-6">
-      {/* Profile Header */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            <div className="relative">
-              <Avatar className="w-24 h-24">
-                <AvatarImage src={user?.avatar || "/placeholder.svg"} />
-                <AvatarFallback className="bg-primary text-primary-foreground text-3xl">
-                  {user?.name?.charAt(0).toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
-              <button className="absolute bottom-0 right-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground shadow-lg">
-                <Camera className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex-1 text-center sm:text-left">
-              <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
-                <h2 className="text-2xl font-bold text-foreground">{user?.name || "Traveler"}</h2>
-                <button className="text-muted-foreground hover:text-foreground">
-                  <Pencil className="w-4 h-4" />
-                </button>
+    <div style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', paddingBottom: '80px', width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px 24px', boxSizing: 'border-box', width: '100%' }}>
+
+        {/* Profile Header */}
+        <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '16px', padding: '20px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 500, color: '#0c4a6e' }}>
+                {nameInitial}
               </div>
-              <p className="text-muted-foreground mb-2">{user?.email}</p>
-              <p className="text-sm text-muted-foreground">
-                Member since{" "}
-                {user?.memberSince?.toLocaleDateString("en-US", {
-                  month: "long",
-                  year: "numeric",
-                }) || "January 2024"}
-              </p>
+              <div style={{ position: 'absolute', bottom: 0, right: 0, width: '22px', height: '22px', borderRadius: '50%', background: '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </div>
             </div>
-            <Button variant="outline" className="bg-transparent">
-              <Pencil className="w-4 h-4 mr-2" />
-              Edit Profile
-            </Button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
+                <span style={{ fontSize: '16px', fontWeight: 500, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {(user as any)?.displayName || 'Traveler'}
+                </span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" strokeWidth="2" style={{ cursor: 'pointer', flexShrink: 0 }}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '2px' }}>
+                {(user as any)?.email || ''}
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-tertiary)' }}>
+                Member since {memberSince || 'January 2024'}
+              </div>
+            </div>
+            <button style={{ padding: '8px 16px', borderRadius: '10px', border: '0.5px solid var(--color-border-secondary)', background: 'var(--color-background-secondary)', fontSize: '12px', color: 'var(--color-text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              Change password
+            </button>
           </div>
-        </CardContent>
-      </Card>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            {[
+              { num: stats.voice, label: 'Voice chats' },
+              { num: stats.chat, label: 'Text chats' },
+              { num: stats.landmarks, label: 'Landmarks' },
+            ].map((s, i) => (
+              <div key={i} style={{ flex: 1, background: 'var(--color-background-secondary)', borderRadius: '12px', padding: '14px 8px', textAlign: 'center' }}>
+                <div style={{ fontSize: '22px', fontWeight: 500, color: 'var(--color-text-primary)' }}>{s.num}</div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
 
-      {/* Travel Style */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-foreground">
-            <Backpack className="w-5 h-5 text-primary" />
-            Travel Style
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            {travelStyles.map((style) => {
-              const isSelected = selectedStyles.includes(style.id);
-              return (
+        {/* Two column layout on desktop */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+
+          {/* Avatar Selection */}
+          <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '16px', padding: '16px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '14px', paddingBottom: '10px', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>Choose your Atlas avatar</div>
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between' }}>
+            {avatars.map(avatar => (
+              <div
+                key={avatar.id}
+                onClick={() => {
+                  setSelectedAvatar(avatar.id)
+                  // Reset voice to first available for new gender
+                  const newGender = avatars.find(a => a.id === avatar.id)?.gender || 'female'
+                  const firstVoice = voices.find(v => v.gender === newGender)
+                  if (firstVoice) setSelectedVoice(firstVoice.id)
+                }}
+                style={{ width: '48px', height: '48px', borderRadius: '12px', border: `2px solid ${selectedAvatar === avatar.id ? '#0ea5e9' : 'var(--color-border-tertiary)'}`, overflow: 'hidden', cursor: 'pointer', position: 'relative', flexShrink: 0 }}
+              >
+                <div style={{ width: '100%', height: '100%', background: avatar.color, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={avatar.stroke} strokeWidth="1.5">
+                    <circle cx="12" cy="8" r="4"/>
+                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                  </svg>
+                  <span style={{ fontSize: '8px', color: avatar.stroke, fontWeight: 500 }}>{avatar.label}</span>
+                </div>
+                {selectedAvatar === avatar.id && (
+                  <div style={{ position: 'absolute', top: '2px', right: '2px', width: '14px', height: '14px', borderRadius: '50%', background: '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: '10px', color: 'var(--color-text-tertiary)', marginTop: '8px' }}>
+            Luna, Nova, Sage = female · Blaze, Orion, Rex = male
+          </div>
+          </div>
+
+          {/* Voice Selection */}
+          <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '16px', padding: '16px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '14px', paddingBottom: '10px', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>Atlas voice</div>
+            {filteredVoices.map((voice, i) => (
+            <div key={voice.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: i < filteredVoices.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button
-                  key={style.id}
-                  onClick={() => toggleStyle(style.id)}
-                  style={{ padding: '10px 6px', borderRadius: '12px', border: '1.5px solid var(--color-border-tertiary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', cursor: 'pointer', position: 'relative', transition: 'all 0.2s', borderColor: isSelected ? 'var(--color-primary)' : 'var(--color-border-tertiary)', backgroundColor: isSelected ? 'rgba(var(--color-primary-rgb), 0.05)' : 'transparent' }}
+                  onClick={() => previewVoice(voice.id)}
+                  style={{ width: '28px', height: '28px', borderRadius: '50%', border: '0.5px solid var(--color-border-secondary)', background: playingVoice === voice.id ? '#0ea5e9' : 'var(--color-background-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
                 >
-                  {isSelected && (
-                    <div className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
-                      <Check className="w-3 h-3 text-primary-foreground" />
-                    </div>
-                  )}
-                  <style.icon
-                    className={cn("w-8 h-8", isSelected ? "text-primary" : "text-muted-foreground")}
-                  />
-                  <span
-                    className={cn(
-                      "text-sm font-medium text-center",
-                      isSelected ? "text-foreground" : "text-muted-foreground"
-                    )}
-                  >
-                    {style.label}
-                  </span>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill={playingVoice === voice.id ? 'white' : 'var(--color-text-secondary)'}><polygon points="5 3 19 12 5 21 5 3"/></svg>
                 </button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Budget Preferences */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-foreground">
-            <DollarSign className="w-5 h-5 text-primary" />
-            Budget Preferences
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {budgetOptions.map((option) => {
-              const isSelected = selectedBudget === option.id;
-              return (
-                <button
-                  key={option.id}
-                  onClick={() => setSelectedBudget(option.id)}
-                  style={{ padding: '10px 12px' }}
-                  className={cn(
-                    "relative flex items-center gap-4 rounded-xl border-2 transition-all",
-                    isSelected
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  )}
-                >
-                  {isSelected && (
-                    <div className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
-                      <Check className="w-3 h-3 text-primary-foreground" />
-                    </div>
-                  )}
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)' }}>{voice.label}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>{voice.desc}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '20px', fontWeight: 500, background: voice.gender === 'female' ? '#fce7f3' : '#e0f2fe', color: voice.gender === 'female' ? '#9d174d' : '#0c4a6e' }}>
+                  {voice.gender === 'female' ? 'Female' : 'Male'}
+                </span>
+                {selectedVoice === voice.id && (
+                  <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                  </div>
+                )}
+                {selectedVoice !== voice.id && (
                   <div
-                    className={cn(
-                      "w-12 h-12 rounded-xl flex items-center justify-center",
-                      isSelected ? "bg-primary/10" : "bg-muted"
-                    )}
-                  >
-                    <option.icon
-                      className={cn(
-                        "w-6 h-6",
-                        isSelected ? "text-primary" : "text-muted-foreground"
-                      )}
-                    />
-                  </div>
-                  <div className="text-left">
-                    <p
-                      className={cn(
-                        "font-medium",
-                        isSelected ? "text-foreground" : "text-muted-foreground"
-                      )}
-                    >
-                      {option.label}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{option.description}</p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Preferences */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-foreground">
-            <Globe className="w-5 h-5 text-primary" />
-            Preferences
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Language */}
-          <div className="space-y-2">
-            <Label className="text-foreground">Preferred Language</Label>
-            <Select value={language} onValueChange={setLanguage}>
-              <SelectTrigger className="w-full sm:w-64">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {languages.map((lang) => (
-                  <SelectItem key={lang} value={lang}>
-                    {lang}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Voice Settings */}
-          <div className="space-y-4">
-            <Label className="text-foreground flex items-center gap-2">
-              <Volume2 className="w-4 h-4" />
-              Voice Settings
-            </Label>
-
-            <div className="space-y-4 pl-6">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Enable voice responses</span>
-                <Switch checked={voiceEnabled} onCheckedChange={setVoiceEnabled} />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Voice speed</span>
-                  <span className="text-sm text-foreground">{voiceSpeed[0]}%</span>
-                </div>
-                <Slider
-                  value={voiceSpeed}
-                  onValueChange={setVoiceSpeed}
-                  max={100}
-                  step={10}
-                  disabled={!voiceEnabled}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Voice gender</span>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant={voiceGender === "female" ? "default" : "outline"}
-                    onClick={() => setVoiceGender("female")}
-                    disabled={!voiceEnabled}
-                    className={voiceGender !== "female" ? "bg-transparent" : ""}
-                  >
-                    Female
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={voiceGender === "male" ? "default" : "outline"}
-                    onClick={() => setVoiceGender("male")}
-                    disabled={!voiceEnabled}
-                    className={voiceGender !== "male" ? "bg-transparent" : ""}
-                  >
-                    Male
-                  </Button>
-                </div>
+                    onClick={() => setSelectedVoice(voice.id)}
+                    style={{ width: '16px', height: '16px', borderRadius: '50%', border: '0.5px solid var(--color-border-secondary)', cursor: 'pointer', flexShrink: 0 }}
+                  />
+                )}
               </div>
             </div>
+          ))}
+          <div style={{ marginTop: '10px', padding: '8px 10px', background: 'var(--color-background-secondary)', borderRadius: '10px', fontSize: '10px', color: 'var(--color-text-tertiary)' }}>
+            {selectedAvatarGender === 'female' ? 'Showing female voices — select a male avatar to see male voices' : 'Showing male voices — select a female avatar to see female voices'}
+          </div>
           </div>
 
-          {/* Theme */}
-          <div className="flex items-center justify-between">
-            <Label className="text-foreground flex items-center gap-2">
-              {theme === "dark" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-              Theme
-            </Label>
-            <div className="flex gap-2">
-              {(["light", "dark", "auto"] as const).map((t) => (
-                <Button
-                  key={t}
-                  size="sm"
-                  variant={theme === t ? "default" : "outline"}
-                  onClick={() => setTheme(t)}
-                  className={cn("capitalize", theme !== t && "bg-transparent")}
+        </div>
+
+        {/* Guide Preferences */}
+        <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '16px', padding: '16px', marginBottom: '12px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '14px', paddingBottom: '10px', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>Guide preferences</div>
+
+          <div style={{ marginBottom: '14px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '4px' }}>Response length</div>
+            <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginBottom: '10px' }}>How detailed Atlas responses are</div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {(['short', 'detailed'] as const).map(opt => (
+                <button
+                  key={opt}
+                  onClick={() => setResponseLength(opt)}
+                  style={{ padding: '7px 16px', borderRadius: '20px', border: '0.5px solid var(--color-border-secondary)', fontSize: '12px', cursor: 'pointer', background: responseLength === opt ? '#0ea5e9' : 'var(--color-background-primary)', color: responseLength === opt ? 'white' : 'var(--color-text-secondary)', fontWeight: responseLength === opt ? 500 : 400 }}
                 >
-                  {t}
-                </Button>
+                  {opt === 'short' ? 'Short & snappy' : 'Detailed'}
+                </button>
               ))}
             </div>
           </div>
 
-          {/* Notifications */}
-          <div className="flex items-center justify-between">
-            <Label className="text-foreground flex items-center gap-2">
-              <Bell className="w-4 h-4" />
-              Notifications
-            </Label>
-            <Switch checked={notifications} onCheckedChange={setNotifications} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)' }}>Language</div>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)' }}>English only for now</div>
+            </div>
+            <span style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '20px', background: '#fef3c7', color: '#92400e', fontWeight: 500 }}>Coming soon</span>
           </div>
+        </div>
 
-          {/* Home Location */}
-          <div className="space-y-2">
-            <Label className="text-foreground flex items-center gap-2">
-              <MapPin className="w-4 h-4" />
-              Home Location
-            </Label>
-            <Button variant="outline" className="w-full sm:w-auto bg-transparent">
-              Set your home location
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Sign Out */}
+        <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '16px', padding: '16px' }}>
+          <button
+            onClick={logout}
+            style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '0.5px solid #fca5a5', background: '#fef2f2', color: '#dc2626', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Sign out
+          </button>
+        </div>
 
-      {/* Interests */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-foreground">
-            <Ticket className="w-5 h-5 text-primary" />
-            Interests
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {interests.map((interest) => {
-              const isSelected = selectedInterests.includes(interest.id);
-              return (
-                <button
-                  key={interest.id}
-                  onClick={() => toggleInterest(interest.id)}
-                  className={cn(
-                    "relative flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all",
-                    isSelected
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  )}
-                >
-                  {isSelected && (
-                    <div className="absolute top-1 right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
-                      <Check className="w-2.5 h-2.5 text-primary-foreground" />
-                    </div>
-                  )}
-                  <interest.icon
-                    className={cn("w-6 h-6", isSelected ? "text-primary" : "text-muted-foreground")}
-                  />
-                  <span
-                    className={cn(
-                      "text-xs font-medium text-center",
-                      isSelected ? "text-foreground" : "text-muted-foreground"
-                    )}
-                  >
-                    {interest.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-3 pt-4">
-        <Button onClick={handleSave} className="flex-1" disabled={isSaving}>
-          {isSaving ? "Saving..." : "Save Preferences"}
-        </Button>
-        <Button variant="outline" onClick={handleReset} className="flex-1 bg-transparent">
-          <RotateCcw className="w-4 h-4 mr-2" />
-          Reset to Default
-        </Button>
-        <Button variant="destructive" onClick={logout} className="flex-1">
-          <LogOut className="w-4 h-4 mr-2" />
-          Logout
-        </Button>
       </div>
-    </div></div>
-  );
+    </div>
+  )
 }

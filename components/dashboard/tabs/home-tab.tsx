@@ -85,19 +85,19 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
           const data = snap.data()
           if (data.avatar) {
             const avatarMap: Record<string, string> = {
-              avatar1: '/avatars/avatar-luna.png',
-              avatar2: '/avatars/avatar-nova.png',
-              avatar3: '/avatars/avatar-sage.png',
-              avatar4: '/avatars/avatar-blaze.png',
-              avatar5: '/avatars/avatar-orion.png',
-              avatar6: '/avatars/avatar-rex.png',
+              avatar1: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-luna.png?alt=media&token=bb7c3ae4-e8cb-4d78-8cb9-e03beb5966e5',
+              avatar2: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-nova.png?alt=media&token=3c60b27f-62eb-4aa9-a442-86b6ce28957f',
+              avatar3: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-sage.png?alt=media&token=6ea53e47-6fda-4f6e-a863-f5f928399fe3',
+              avatar4: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-blaze.png?alt=media&token=afbe5f15-9276-4b50-a295-b3c25300175d',
+              avatar5: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-orion.png?alt=media&token=79c55666-f3a9-4d65-a8eb-3acad58f9bd3',
+              avatar6: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-rex.png?alt=media&token=ff7bbacc-0d05-4853-b36f-e1eb4d1240ea',
             }
-            setAvatarImg(avatarMap[data.avatar] || '/avatars/avatar-luna.png')
+            setAvatarImg(avatarMap[data.avatar] || 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-luna.png?alt=media&token=bb7c3ae4-e8cb-4d78-8cb9-e03beb5966e5')
           }
           if (data.voice) selectedVoiceRef.current = data.voice
           if (data.responseLength) responseMode.current = data.responseLength
         } else {
-          setAvatarImg('/avatars/avatar-luna.png')
+          setAvatarImg('https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-luna.png?alt=media&token=bb7c3ae4-e8cb-4d78-8cb9-e03beb5966e5')
           selectedVoiceRef.current = 'nova'
         }
       } catch {}

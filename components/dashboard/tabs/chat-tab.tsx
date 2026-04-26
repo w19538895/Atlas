@@ -106,6 +106,21 @@ export function ChatTab({ onTabChange }: { onTabChange?: (tab: string) => void }
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [hasProcessedLandmark]);
 
+  useEffect(() => {
+    const historyData = localStorage.getItem('historyConversation')
+    if (!historyData) return
+    localStorage.removeItem('historyConversation')
+    try {
+      const { messages: savedMessages, sessionId: savedSessionId, type } = JSON.parse(historyData)
+      if (type === 'chat' && savedMessages.length > 0) {
+        const restored = savedMessages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }))
+        setMessages(restored)
+        setSessionId(savedSessionId)
+        setTimeout(() => generateSuggestions(restored), 500)
+      }
+    } catch (e) { console.error(e) }
+  }, [])
+
   const generateLandmarkWelcome = async (landmarkName: string, landmarkLocation: string) => {
     try {
       const response = await fetch("/api/chat", {
@@ -436,9 +451,9 @@ export function ChatTab({ onTabChange }: { onTabChange?: (tab: string) => void }
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
+        {messages.map((message, index) => (
           <div
-            key={message.id}
+            key={message.id || `msg-${index}`}
             className={cn(
               "flex gap-3",
               message.role === "user" ? "justify-end" : "justify-start"

@@ -59,7 +59,7 @@ export function DashboardLayout({ onLogout }: DashboardLayoutProps) {
       case "chat":
         return <ChatTab onTabChange={setActiveTab} />;
       case "history":
-        return <HistoryTab />;
+        return <HistoryTab onTabChange={setActiveTab} />;
       case "profile":
         return <ProfileTab />;
       default:
@@ -68,7 +68,7 @@ export function DashboardLayout({ onLogout }: DashboardLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex" style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+    <div className="min-h-screen bg-background flex" style={{ display: 'flex', height: '100vh', overflow: 'hidden', overflowX: 'hidden' }}>
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card">
         {/* Logo */}
@@ -184,7 +184,7 @@ export function DashboardLayout({ onLogout }: DashboardLayoutProps) {
         </header>
 
         {/* Tab Content */}
-        <main className="flex-1 overflow-hidden pb-16 md:pb-0 overflow-y-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>{renderTabContent()}</main>
+        <main className="flex-1 overflow-hidden pb-16 md:pb-0 overflow-y-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)', width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>{renderTabContent()}</main>
 
         {/* Mobile Bottom Navigation */}
         <nav className="fixed bottom-0 left-0 right-0 md:hidden h-[60px] bg-white border-t border-border z-[9999]">

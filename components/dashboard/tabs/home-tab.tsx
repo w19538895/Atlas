@@ -56,6 +56,21 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
       .catch(() => {})
   }, [])
 
+  useEffect(() => {
+    const historyData = localStorage.getItem('historyConversation')
+    if (!historyData) return
+    localStorage.removeItem('historyConversation')
+    try {
+      const { messages: savedMessages, sessionId: savedSessionId, type } = JSON.parse(historyData)
+      if (type === 'voice' && savedMessages.length > 0) {
+        const restored = savedMessages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }))
+        setMessages(restored)
+        sessionId.current = savedSessionId
+        setTimeout(() => generateSuggestions(restored), 500)
+      }
+    } catch (e) { console.error(e) }
+  }, [])
+
   // ── SUGGESTIONS — exact copy from chat-tab.tsx ──
   const generateSuggestions = async (chatMessages: Message[]) => {
     try {

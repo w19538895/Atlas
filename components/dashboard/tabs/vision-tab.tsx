@@ -28,6 +28,8 @@ interface AnalysisResult {
   historicalFacts: string[];
   interestingDetails: string[];
   travelTips: string[];
+  imageUrl?: string;
+  description?: string;
   error?: string;
 }
 
@@ -81,6 +83,16 @@ export function VisionTab({ onTabChange }: { onTabChange?: (tab: string) => void
       }
     };
   }, [cameraMode, uploadedImage]);
+
+  useEffect(() => {
+    const historyData = localStorage.getItem('historyLandmark')
+    if (!historyData) return
+    localStorage.removeItem('historyLandmark')
+    try {
+      const { name, location } = JSON.parse(historyData)
+      analyzeByName(name, location)
+    } catch (e) { console.error(e) }
+  }, [])
 
   const initializeCamera = async () => {
     try {
@@ -201,6 +213,32 @@ export function VisionTab({ onTabChange }: { onTabChange?: (tab: string) => void
       console.error("Error saving to Firestore:", error);
     }
   };
+
+  const analyzeByName = async (name: string, location: string) => {
+    setIsAnalyzing(true)
+    const imageUrl = `https://source.unsplash.com/800x600/?${encodeURIComponent(name)},landmark`
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{
+            role: 'user',
+            content: `Tell me about the landmark "${name}" in "${location}". Return ONLY valid JSON: {"name": "${name}", "location": "${location}", "description": "2 sentence description", "historicalFacts": ["fact1", "fact2", "fact3"], "interestingDetails": ["detail1", "detail2", "detail3"], "travelTips": ["tip1", "tip2"]}. Nothing else, no markdown.`
+          }]
+        })
+      })
+      const data = await response.json()
+      const clean = data.message?.replace(/```json/g, '').replace(/```/g, '').trim()
+      const parsed = JSON.parse(clean)
+      setAnalysisResult({ ...parsed, imageUrl })
+    } catch (e) {
+      console.error(e)
+      setAnalysisResult({ name, location, imageUrl, historicalFacts: [], interestingDetails: [], travelTips: [], description: '' })
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
 
   const handleChatAbout = () => {
     if (analysisResult?.name) {

@@ -12,12 +12,36 @@ const voices = [
 ]
 
 const avatars = [
-  { id: 'avatar1', label: 'Luna', gender: 'female', img: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-luna.png?alt=media&token=bb7c3ae4-e8cb-4d78-8cb9-e03beb5966e5' },
-  { id: 'avatar2', label: 'Nova', gender: 'female', img: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-nova.png?alt=media&token=3c60b27f-62eb-4aa9-a442-86b6ce28957f' },
-  { id: 'avatar3', label: 'Sage', gender: 'female', img: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-sage.png?alt=media&token=6ea53e47-6fda-4f6e-a863-f5f928399fe3' },
-  { id: 'avatar4', label: 'Blaze', gender: 'male', img: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-blaze.png?alt=media&token=afbe5f15-9276-4b50-a295-b3c25300175d' },
-  { id: 'avatar5', label: 'Orion', gender: 'male', img: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-orion.png?alt=media&token=79c55666-f3a9-4d65-a8eb-3acad58f9bd3' },
-  { id: 'avatar6', label: 'Rex', gender: 'male', img: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-rex.png?alt=media&token=ff7bbacc-0d05-4853-b36f-e1eb4d1240ea' },
+  { 
+    id: 'avatar1', label: 'Luna', gender: 'female', 
+    img: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-luna.png?alt=media&token=bb7c3ae4-e8cb-4d78-8cb9-e03beb5966e5',
+    faceImg: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FLuna-face.png?alt=media&token=ec2858ba-1ba9-4e85-8abf-15bbe52bc93d'
+  },
+  { 
+    id: 'avatar2', label: 'Nova', gender: 'female', 
+    img: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-nova.png?alt=media&token=3c60b27f-62eb-4aa9-a442-86b6ce28957f',
+    faceImg: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FNova-face.png?alt=media&token=aef92065-8111-4c56-822e-0aa5f82f6683'
+  },
+  { 
+    id: 'avatar3', label: 'Sage', gender: 'female', 
+    img: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-sage.png?alt=media&token=6ea53e47-6fda-4f6e-a863-f5f928399fe3',
+    faceImg: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FSage-face.png?alt=media&token=71d00ae7-30ec-496f-9c61-6e8832cd55a5'
+  },
+  { 
+    id: 'avatar4', label: 'Blaze', gender: 'male', 
+    img: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-blaze.png?alt=media&token=afbe5f15-9276-4b50-a295-b3c25300175d',
+    faceImg: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FBlaze-face.png?alt=media&token=8727b250-55d4-435b-872e-83486603d92a'
+  },
+  { 
+    id: 'avatar5', label: 'Orion', gender: 'male', 
+    img: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-orion.png?alt=media&token=79c55666-f3a9-4d65-a8eb-3acad58f9bd3',
+    faceImg: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FOrion-face.png?alt=media&token=acd5e8c9-4fa8-40c8-b992-3b4bce23a19f'
+  },
+  { 
+    id: 'avatar6', label: 'Rex', gender: 'male', 
+    img: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Favatar-rex.png?alt=media&token=ff7bbacc-0d05-4853-b36f-e1eb4d1240ea',
+    faceImg: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FRex-face.png?alt=media&token=e253df50-0a62-4fd1-ac0f-5eec1626669f'
+  },
 ]
 
 export function ProfileTab() {
@@ -333,7 +357,7 @@ export function ProfileTab() {
                 style={{ width: '56px', height: '56px', borderRadius: '12px', border: `2px solid ${selectedAvatar === avatar.id ? '#0ea5e9' : 'var(--color-border-tertiary)'}`, overflow: 'hidden', cursor: 'pointer', position: 'relative', flexShrink: 0 }}
               >
                 <img
-                  src={avatar.img}
+                  src={avatar.faceImg}
                   alt={avatar.label}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />

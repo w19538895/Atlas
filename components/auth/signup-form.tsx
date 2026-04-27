@@ -86,8 +86,9 @@ export function SignupForm({ onSwitchToLogin, onSuccess }: SignupFormProps) {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-muted to-background p-6">
       <Card className="w-full max-w-md shadow-xl border-border/50">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-            <Compass className="h-8 w-8 text-primary" />
+          <div className="mx-auto flex flex-col items-center gap-2 mb-2">
+            <img src="/Atlas.png" alt="Atlas" style={{ width: '52px', height: '52px', objectFit: 'contain' }} />
+            <span style={{ fontSize: '20px', fontWeight: 600, color: 'var(--color-text-primary)' }}>Atlas</span>
           </div>
           <div>
             <CardTitle className="text-2xl font-bold text-foreground">Create account</CardTitle>

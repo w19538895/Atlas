@@ -6,6 +6,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
+  updateProfile,
   onAuthStateChanged
 } from 'firebase/auth';
 import { auth, db } from '@/firebase.config';
@@ -36,6 +37,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = async (email: string, password: string, name: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    
+    // Update Firebase Auth displayName immediately
+    await updateProfile(userCredential.user, { displayName: name });
     
     // Save user profile to Firestore
     await setDoc(doc(db, 'users', userCredential.user.uid), {

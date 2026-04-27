@@ -425,10 +425,17 @@ export function ProfileTab() {
         <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: '16px', padding: '16px' }}>
           <button
             onClick={logout}
-            style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '0.5px solid #fca5a5', background: '#fef2f2', color: '#dc2626', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            style={{ 
+  width: '100%', padding: '12px', borderRadius: '10px', 
+  border: '1.5px solid #dc2626', 
+  background: '#dc2626', 
+  color: 'white', 
+  fontSize: '13px', fontWeight: 500, cursor: 'pointer', 
+  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' 
+}}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-            Sign out
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Log out
           </button>
         </div>
 

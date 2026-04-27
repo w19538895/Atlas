@@ -89,11 +89,8 @@ export function DashboardLayout({ onLogout }: DashboardLayoutProps) {
       <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card">
         {/* Logo */}
         <div className="flex items-center gap-2 p-6 border-b border-border">
-          <div className="relative">
-            <Compass className="h-8 w-8 text-primary" />
-            <div className="absolute -top-1 -right-1 h-3 w-3 bg-accent rounded-full" />
-          </div>
-          <span className="text-xl font-bold text-foreground">TravelMate</span>
+          <img src="/Atlas.png" alt="Atlas" style={{ height: '48px', width: '48px', objectFit: 'contain' }} />
+          <span className="text-xl font-bold text-foreground">Atlas</span>
         </div>
 
         {/* Navigation */}
@@ -155,8 +152,8 @@ export function DashboardLayout({ onLogout }: DashboardLayoutProps) {
           <div className="flex items-center justify-between px-4 lg:px-6 h-16">
             {/* Mobile Logo */}
             <div className="flex items-center gap-2 lg:hidden">
-              <Compass className="h-6 w-6 text-primary" />
-              <span className="font-bold text-foreground">TravelMate</span>
+              <img src="/Atlas.png" alt="Atlas" style={{ height: '40px', width: '40px', objectFit: 'contain' }} />
+              <span className="font-bold text-foreground">Atlas</span>
             </div>
 
             {/* Page Title - Desktop */}
@@ -189,7 +186,7 @@ export function DashboardLayout({ onLogout }: DashboardLayoutProps) {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setActiveTab("profile")}>
                     <Settings className="mr-2 h-4 w-4" />
-                    Settings
+                    Profile
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={onLogout} className="text-destructive">

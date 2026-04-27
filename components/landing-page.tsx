@@ -11,10 +11,10 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
     <div style={{ background: 'linear-gradient(160deg, #0ea5e9 0%, #06b6d4 60%, #0284c7 100%)', minHeight: '100vh', overflowX: 'hidden', fontFamily: 'var(--font-sans)' }}>
 
       {/* Header */}
-      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', maxWidth: '1200px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <img src="/Atlas.png" alt="Atlas" style={{ width: '36px', height: '36px', objectFit: 'contain' }} />
-          <span style={{ color: 'white', fontSize: '20px', fontWeight: 500 }}>Atlas</span>
+      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 60px', maxWidth: '1400px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <img src="/Atlas.png" alt="Atlas" style={{ width: '48px', height: '48px', objectFit: 'contain' }} />
+          <span style={{ color: 'white', fontSize: '28px', fontWeight: 600 }}>Atlas</span>
         </div>
         <button
           onClick={onGetStarted}
@@ -25,10 +25,10 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
       </header>
 
       {/* Desktop layout — two columns, Mobile — single column */}
-      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 40px 80px' }}>
+      <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '60px 60px 100px' }}>
 
         {/* TOP SECTION — two col on desktop, single on mobile */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '60px', marginBottom: '60px', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '40px', marginBottom: '48px', justifyContent: 'center' }}>
 
           {/* LEFT — text content */}
           <div style={{ flex: '1 1 320px', maxWidth: '500px', textAlign: 'left' }}>
@@ -37,10 +37,10 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
               <span style={{ color: 'white', fontSize: '12px' }}>Your AI Travel Companion</span>
             </div>
 
-            <h1 style={{ fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 600, color: 'white', margin: '0 0 16px', lineHeight: 1.2 }}>
+            <h1 style={{ fontSize: 'clamp(32px, 5vw, 64px)', fontWeight: 600, color: 'white', margin: '0 0 20px', lineHeight: 1.15 }}>
               Explore smarter.<br />Travel better.
             </h1>
-            <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.85)', margin: '0 0 32px', lineHeight: 1.7, maxWidth: '420px' }}>
+            <p style={{ fontSize: 'clamp(14px, 1.5vw, 18px)', color: 'rgba(255,255,255,0.85)', margin: '0 0 36px', lineHeight: 1.7, maxWidth: '460px' }}>
               Meet your personal AI guide — have real voice conversations, detect landmarks and get travel advice wherever you go.
             </p>
 
@@ -55,13 +55,13 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
           {/* RIGHT — avatar trio */}
           <div style={{ flex: '1 1 260px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: '12px' }}>
-              <div style={{ width: '70px', height: '90px', borderRadius: '16px', border: '2.5px solid white', overflow: 'hidden', zIndex: 2, transform: 'rotate(-6deg) translateX(14px)', flexShrink: 0 }}>
+              <div style={{ width: '90px', height: '116px', borderRadius: '16px', border: '2.5px solid white', overflow: 'hidden', zIndex: 2, transform: 'rotate(-6deg) translateX(18px)', flexShrink: 0 }}>
                 <img src="https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FSage-face.png?alt=media&token=71d00ae7-30ec-496f-9c61-6e8832cd55a5" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Sage" />
               </div>
-              <div style={{ width: '90px', height: '116px', borderRadius: '20px', border: '3px solid white', overflow: 'hidden', zIndex: 4, flexShrink: 0 }}>
+              <div style={{ width: '116px', height: '150px', borderRadius: '20px', border: '3px solid white', overflow: 'hidden', zIndex: 4, flexShrink: 0 }}>
                 <img src="https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FLuna-face.png?alt=media&token=ec2858ba-1ba9-4e85-8abf-15bbe52bc93d" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Luna" />
               </div>
-              <div style={{ width: '70px', height: '90px', borderRadius: '16px', border: '2.5px solid white', overflow: 'hidden', zIndex: 2, transform: 'rotate(6deg) translateX(-14px)', flexShrink: 0 }}>
+              <div style={{ width: '90px', height: '116px', borderRadius: '16px', border: '2.5px solid white', overflow: 'hidden', zIndex: 2, transform: 'rotate(6deg) translateX(-18px)', flexShrink: 0 }}>
                 <img src="https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FBlaze-face.png?alt=media&token=8727b250-55d4-435b-872e-83486603d92a" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Blaze" />
               </div>
             </div>
@@ -76,7 +76,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                 { url: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FOrion-face.png?alt=media&token=acd5e8c9-4fa8-40c8-b992-3b4bce23a19f', name: 'Orion' },
                 { url: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FRex-face.png?alt=media&token=e253df50-0a62-4fd1-ac0f-5eec1626669f', name: 'Rex' },
               ].map(a => (
-                <div key={a.name} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.6)', overflow: 'hidden' }}>
+                <div key={a.name} style={{ width: '44px', height: '44px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.6)', overflow: 'hidden' }}>
                   <img src={a.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={a.name} />
                 </div>
               ))}
@@ -86,9 +86,9 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         </div>
 
         {/* BOTTOM SECTION — feature cards + chat bubble */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'stretch' }}>
 
-          <div style={{ flex: '1 1 220px', maxWidth: '360px', background: 'rgba(255,255,255,0.12)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+          <div style={{ flex: '1 1 260px', background: 'rgba(255,255,255,0.12)', borderRadius: '16px', padding: '24px', display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
@@ -101,7 +101,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             </div>
           </div>
 
-          <div style={{ flex: '1 1 220px', maxWidth: '360px', background: 'rgba(255,255,255,0.12)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+          <div style={{ flex: '1 1 260px', background: 'rgba(255,255,255,0.12)', borderRadius: '16px', padding: '24px', display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
@@ -114,7 +114,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             </div>
           </div>
 
-          <div style={{ flex: '1 1 220px', maxWidth: '360px', background: 'rgba(255,255,255,0.12)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+          <div style={{ flex: '1 1 260px', background: 'rgba(255,255,255,0.12)', borderRadius: '16px', padding: '24px', display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
             <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -126,7 +126,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             </div>
           </div>
 
-          <div style={{ flex: '1 1 220px', maxWidth: '360px', background: 'rgba(255,255,255,0.1)', borderRadius: '16px', padding: '20px' }}>
+          <div style={{ flex: '1 1 260px', background: 'rgba(255,255,255,0.1)', borderRadius: '16px', padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
               <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">

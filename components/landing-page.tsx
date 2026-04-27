@@ -2,133 +2,146 @@
 
 import React from "react"
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Compass, MapPin, MessageCircle, Camera, Sparkles } from "lucide-react";
-
 interface LandingPageProps {
   onGetStarted: () => void;
 }
 
 export function LandingPage({ onGetStarted }: LandingPageProps) {
-  const [isHovered, setIsHovered] = useState(false);
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary via-primary/90 to-accent overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-20 left-10 w-64 h-64 rounded-full bg-background blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full bg-background blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-background/20 blur-3xl" />
-      </div>
+    <div style={{ background: 'linear-gradient(160deg, #0ea5e9 0%, #06b6d4 60%, #0284c7 100%)', minHeight: '100vh', overflowX: 'hidden', fontFamily: 'var(--font-sans)' }}>
 
       {/* Header */}
-      <header className="relative z-10 flex items-center justify-between p-6 lg:px-12">
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Compass className="h-8 w-8 text-primary-foreground" />
-            <div className="absolute -top-1 -right-1 h-3 w-3 bg-accent rounded-full animate-pulse" />
-          </div>
-          <span className="text-xl font-bold text-primary-foreground">TravelMate</span>
+      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <img src="/Atlas.png" alt="Atlas" style={{ width: '36px', height: '36px', objectFit: 'contain' }} />
+          <span style={{ color: 'white', fontSize: '20px', fontWeight: 500 }}>Atlas</span>
         </div>
-        <Button
-          variant="outline"
-          className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 bg-transparent"
+        <button
           onClick={onGetStarted}
+          style={{ padding: '8px 22px', borderRadius: '20px', border: '1.5px solid rgba(255,255,255,0.5)', background: 'transparent', color: 'white', fontSize: '14px', cursor: 'pointer', fontWeight: 500 }}
         >
-          Sign In
-        </Button>
+          Sign in
+        </button>
       </header>
 
-      {/* Hero Section */}
-      <main className="relative z-10 flex flex-col items-center justify-center px-6 pt-12 pb-24 lg:pt-20">
-        {/* Animated Logo */}
-        <div
-          className="relative mb-8"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-        >
-          <div
-            className={`w-32 h-32 lg:w-40 lg:h-40 rounded-full bg-primary-foreground/20 backdrop-blur-sm flex items-center justify-center transition-transform duration-500 ${isHovered ? "scale-110" : ""}`}
-          >
-            <div className="w-24 h-24 lg:w-32 lg:h-32 rounded-full bg-primary-foreground/30 flex items-center justify-center">
-              <div className="w-16 h-16 lg:w-24 lg:h-24 rounded-full bg-primary-foreground flex items-center justify-center shadow-2xl">
-                <Compass className="h-10 w-10 lg:h-14 lg:w-14 text-primary" />
+      {/* Desktop layout — two columns, Mobile — single column */}
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 40px 80px' }}>
+
+        {/* TOP SECTION — two col on desktop, single on mobile */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '60px', marginBottom: '60px', justifyContent: 'center' }}>
+
+          {/* LEFT — text content */}
+          <div style={{ flex: '1 1 320px', maxWidth: '500px', textAlign: 'left' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.15)', borderRadius: '20px', padding: '5px 14px', marginBottom: '20px' }}>
+              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#86efac' }} />
+              <span style={{ color: 'white', fontSize: '12px' }}>Your AI Travel Companion</span>
+            </div>
+
+            <h1 style={{ fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 600, color: 'white', margin: '0 0 16px', lineHeight: 1.2 }}>
+              Explore smarter.<br />Travel better.
+            </h1>
+            <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.85)', margin: '0 0 32px', lineHeight: 1.7, maxWidth: '420px' }}>
+              Meet your personal AI guide — have real voice conversations, detect landmarks and get travel advice wherever you go.
+            </p>
+
+            <button
+              onClick={onGetStarted}
+              style={{ padding: '14px 44px', borderRadius: '14px', border: 'none', background: 'white', color: '#0ea5e9', fontSize: '15px', fontWeight: 500, cursor: 'pointer' }}
+            >
+              Get Started Free
+            </button>
+          </div>
+
+          {/* RIGHT — avatar trio */}
+          <div style={{ flex: '1 1 260px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: '12px' }}>
+              <div style={{ width: '70px', height: '90px', borderRadius: '16px', border: '2.5px solid white', overflow: 'hidden', zIndex: 2, transform: 'rotate(-6deg) translateX(14px)', flexShrink: 0 }}>
+                <img src="https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FSage-face.png?alt=media&token=71d00ae7-30ec-496f-9c61-6e8832cd55a5" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Sage" />
+              </div>
+              <div style={{ width: '90px', height: '116px', borderRadius: '20px', border: '3px solid white', overflow: 'hidden', zIndex: 4, flexShrink: 0 }}>
+                <img src="https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FLuna-face.png?alt=media&token=ec2858ba-1ba9-4e85-8abf-15bbe52bc93d" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Luna" />
+              </div>
+              <div style={{ width: '70px', height: '90px', borderRadius: '16px', border: '2.5px solid white', overflow: 'hidden', zIndex: 2, transform: 'rotate(6deg) translateX(-14px)', flexShrink: 0 }}>
+                <img src="https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FBlaze-face.png?alt=media&token=8727b250-55d4-435b-872e-83486603d92a" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Blaze" />
               </div>
             </div>
-          </div>
-          {/* Orbiting dots */}
-          <div className="absolute inset-0 animate-spin" style={{ animationDuration: "8s" }}>
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-3 bg-accent rounded-full" />
-          </div>
-          <div
-            className="absolute inset-0 animate-spin"
-            style={{ animationDuration: "12s", animationDirection: "reverse" }}
-          >
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-2 bg-primary-foreground rounded-full" />
+
+            {/* All 6 avatar faces in a row below */}
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '8px' }}>
+              {[
+                { url: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FLuna-face.png?alt=media&token=ec2858ba-1ba9-4e85-8abf-15bbe52bc93d', name: 'Luna' },
+                { url: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FNova-face.png?alt=media&token=aef92065-8111-4c56-822e-0aa5f82f6683', name: 'Nova' },
+                { url: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FSage-face.png?alt=media&token=71d00ae7-30ec-496f-9c61-6e8832cd55a5', name: 'Sage' },
+                { url: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FBlaze-face.png?alt=media&token=8727b250-55d4-435b-872e-83486603d92a', name: 'Blaze' },
+                { url: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FOrion-face.png?alt=media&token=acd5e8c9-4fa8-40c8-b992-3b4bce23a19f', name: 'Orion' },
+                { url: 'https://firebasestorage.googleapis.com/v0/b/atlas-f90ee.firebasestorage.app/o/avatars%2Ffaces%2FRex-face.png?alt=media&token=e253df50-0a62-4fd1-ac0f-5eec1626669f', name: 'Rex' },
+              ].map(a => (
+                <div key={a.name} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.6)', overflow: 'hidden' }}>
+                  <img src={a.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={a.name} />
+                </div>
+              ))}
+            </div>
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px', margin: 0 }}>Choose from 6 AI travel companions</p>
           </div>
         </div>
 
-        {/* Tagline */}
-        <h1 className="text-4xl lg:text-6xl font-bold text-primary-foreground text-center mb-4 text-balance">
-          Your AI-Powered
-          <br />
-          <span className="text-accent">Travel Companion</span>
-        </h1>
-        <p className="text-lg lg:text-xl text-primary-foreground/80 text-center max-w-xl mb-12 text-pretty">
-          Discover landmarks, get personalized recommendations, and explore the world with your
-          intelligent tour guide
-        </p>
+        {/* BOTTOM SECTION — feature cards + chat bubble */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'center' }}>
 
-        {/* CTA Button */}
-        <Button
-          size="lg"
-          onClick={onGetStarted}
-          className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 text-lg px-8 py-6 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
-        >
-          <Sparkles className="mr-2 h-5 w-5" />
-          Get Started
-        </Button>
+          <div style={{ flex: '1 1 220px', maxWidth: '360px', background: 'rgba(255,255,255,0.12)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+            <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
+              </svg>
+            </div>
+            <div>
+              <div style={{ color: 'white', fontSize: '14px', fontWeight: 500, marginBottom: '6px' }}>AI-powered voice conversations</div>
+              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', lineHeight: 1.5 }}>Talk naturally to your avatar and get spoken travel advice in real time</div>
+            </div>
+          </div>
 
-        {/* Feature Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-20 max-w-4xl w-full">
-          <FeatureCard
-            icon={<Camera className="h-6 w-6" />}
-            title="Landmark Recognition"
-            description="Point your camera at any landmark and get instant information"
-          />
-          <FeatureCard
-            icon={<MessageCircle className="h-6 w-6" />}
-            title="AI Chat Guide"
-            description="Ask questions and get personalized travel recommendations"
-          />
-          <FeatureCard
-            icon={<MapPin className="h-6 w-6" />}
-            title="Smart Exploration"
-            description="Discover hidden gems based on your travel preferences"
-          />
+          <div style={{ flex: '1 1 220px', maxWidth: '360px', background: 'rgba(255,255,255,0.12)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+            <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </div>
+            <div>
+              <div style={{ color: 'white', fontSize: '14px', fontWeight: 500, marginBottom: '6px' }}>Instant landmark detection</div>
+              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', lineHeight: 1.5 }}>Point your camera at any landmark and get history, facts and tips instantly</div>
+            </div>
+          </div>
+
+          <div style={{ flex: '1 1 220px', maxWidth: '360px', background: 'rgba(255,255,255,0.12)', borderRadius: '16px', padding: '20px', display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+            <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <div>
+              <div style={{ color: 'white', fontSize: '14px', fontWeight: 500, marginBottom: '6px' }}>Smart travel chat</div>
+              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', lineHeight: 1.5 }}>Ask about restaurants, culture and hidden gems and get personalised recommendations</div>
+            </div>
+          </div>
+
+          <div style={{ flex: '1 1 220px', maxWidth: '360px', background: 'rgba(255,255,255,0.1)', borderRadius: '16px', padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+              </div>
+              <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.05em' }}>ATLAS</span>
+            </div>
+            <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '13px', margin: 0, lineHeight: 1.6 }}>
+              "The Colosseum was completed in 80 AD and could hold 80,000 spectators. Want to know the best time to visit?"
+            </p>
+          </div>
+
         </div>
       </main>
-    </div>
-  );
-}
-
-function FeatureCard({
-  icon,
-  title,
-  description,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="bg-primary-foreground/10 backdrop-blur-sm rounded-2xl p-6 border border-primary-foreground/20 hover:bg-primary-foreground/15 transition-colors">
-      <div className="w-12 h-12 rounded-xl bg-primary-foreground/20 flex items-center justify-center text-primary-foreground mb-4">
-        {icon}
-      </div>
-      <h3 className="text-lg font-semibold text-primary-foreground mb-2">{title}</h3>
-      <p className="text-primary-foreground/70 text-sm">{description}</p>
     </div>
   );
 }

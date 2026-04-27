@@ -16,10 +16,10 @@ import {
   MessageCircle,
   MoreVertical,
   Trash2,
-  Heart,
+  MapPin,
 } from "lucide-react";
 
-type FilterType = "all" | "conversations" | "landmarks" | "favorites";
+type FilterType = "all" | "voice" | "chat";
 
 interface HistoryItem {
   id: string;
@@ -29,7 +29,6 @@ interface HistoryItem {
   date: Date;
   preview: string;
   tags: string[];
-  isFavorite: boolean;
   imageUrl?: string;
   messages?: any[];
 }
@@ -38,7 +37,6 @@ const filters = [
   { id: 'all', label: 'All' },
   { id: 'voice', label: 'Voice' },
   { id: 'chat', label: 'Chat' },
-  { id: 'favorites', label: 'Favorites' },
 ];
 
 export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => void }) {
@@ -72,7 +70,7 @@ export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => voi
               title: data.lastMessage.substring(0, 50) || 'Chat conversation',
               location: data.location || '', date: new Date(data.updatedAt),
               preview: data.aiLastResponse?.substring(0, 100) || '',
-              tags: ['Chat'], isFavorite: false,
+              tags: ['Chat'],
             });
           }
         });
@@ -89,7 +87,7 @@ export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => voi
               title: data.lastMessage.substring(0, 50) || 'Voice conversation',
               location: data.location || '', date: new Date(data.updatedAt),
               preview: data.aiLastResponse?.substring(0, 100) || '',
-              tags: ['Voice'], isFavorite: false,
+              tags: ['Voice'],
             });
           }
         });
@@ -136,12 +134,17 @@ export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => voi
     setSelectedItem(null);
   };
 
-  const toggleFavorite = (id: string) => {
-    setHistory((prev) => prev.map((item) => (item.id === id ? { ...item, isFavorite: !item.isFavorite } : item)));
-  };
-
-  const deleteItem = (id: string) => {
-    setHistory((prev) => prev.filter((item) => item.id !== id));
+  const deleteItem = async (id: string, tags: string[]) => {
+    try {
+      const { db } = await import('@/firebase.config')
+      const { doc, deleteDoc } = await import('firebase/firestore')
+      const col = tags.includes('Voice') ? 'avatarHistory' :
+                  tags.includes('Chat') ? 'chatHistory' : 'visionHistory'
+      await deleteDoc(doc(db, col, id))
+      setHistory(prev => prev.filter(item => item.id !== id))
+    } catch (e) {
+      console.error('Delete error:', e)
+    }
   };
 
   const formatDate = (date: Date) => {
@@ -158,7 +161,6 @@ export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => voi
   const filteredHistory = history.filter((item) => {
     if (activeFilter === 'voice' && !item.tags.includes('Voice')) return false;
     if (activeFilter === 'chat' && !item.tags.includes('Chat')) return false;
-    if (activeFilter === 'favorites' && !item.isFavorite) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return item.title.toLowerCase().includes(q) ||
@@ -215,11 +217,18 @@ export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => voi
                   ) : (
                     <div style={{ width: '52px', height: '52px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: item.type === 'landmark' ? '#eff6ff' : '#f0fdf4' }}>
                       {item.type === 'landmark' ? (
-                        <span style={{ fontSize: '18px' }}>📍</span>
+                        <MapPin className="w-6 h-6 text-primary" />
                       ) : item.tags.includes('Voice') ? (
-                        <span style={{ fontSize: '18px' }}>🎤</span>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round">
+                          <line x1="2" y1="12" x2="2" y2="12"/>
+                          <line x1="6" y1="8" x2="6" y2="16"/>
+                          <line x1="10" y1="5" x2="10" y2="19"/>
+                          <line x1="14" y1="8" x2="14" y2="16"/>
+                          <line x1="18" y1="10" x2="18" y2="14"/>
+                          <line x1="22" y1="12" x2="22" y2="12"/>
+                        </svg>
                       ) : (
-                        <MessageCircle style={{ width: '22px', height: '22px', color: '#22c55e' }} />
+                        <MessageCircle className="w-6 h-6" style={{ color: '#0ea5e9' }} />
                       )}
                     </div>
                   )}
@@ -229,12 +238,6 @@ export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => voi
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '4px', marginBottom: '2px' }}>
                     <h3 style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{item.title}</h3>
                     <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                      <button
-                        onClick={() => toggleFavorite(item.id)}
-                        style={{ width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                      >
-                        <Heart style={{ width: '15px', height: '15px', color: item.isFavorite ? '#ef4444' : '#9ca3af', fill: item.isFavorite ? '#ef4444' : 'none' }} />
-                      </button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button style={{ width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
@@ -245,7 +248,7 @@ export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => voi
                           <DropdownMenuItem onClick={() => viewItem(item)}>
                             View
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={() => deleteItem(item.id)}>
+                          <DropdownMenuItem className="text-destructive" onClick={() => deleteItem(item.id, item.tags)}>
                             <Trash2 className="mr-2 h-4 w-4" />Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -290,7 +293,21 @@ export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => voi
             onClick={e => e.stopPropagation()}>
             <div style={{ padding: '16px 20px', borderBottom: '0.5px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ fontSize: '15px', fontWeight: 600 }}>{selectedItem.title}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {selectedItem.tags.includes('Voice') ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round">
+                      <line x1="2" y1="12" x2="2" y2="12"/>
+                      <line x1="6" y1="8" x2="6" y2="16"/>
+                      <line x1="10" y1="5" x2="10" y2="19"/>
+                      <line x1="14" y1="8" x2="14" y2="16"/>
+                      <line x1="18" y1="10" x2="18" y2="14"/>
+                      <line x1="22" y1="12" x2="22" y2="12"/>
+                    </svg>
+                  ) : (
+                    <MessageCircle style={{ width: '14px', height: '14px', color: '#0ea5e9' }} />
+                  )}
+                  <div style={{ fontSize: '15px', fontWeight: 600 }}>{selectedItem.title}</div>
+                </div>
                 <div style={{ fontSize: '12px', color: '#6b7280' }}>{selectedItem.location} · {formatDate(selectedItem.date)}</div>
               </div>
               <button onClick={() => setSelectedItem(null)} style={{ border: 'none', background: 'none', fontSize: '20px', cursor: 'pointer', color: '#6b7280' }}>✕</button>
@@ -325,9 +342,24 @@ export function HistoryTab({ onTabChange }: { onTabChange?: (tab: string) => voi
             <div style={{ padding: '12px 20px', borderTop: '0.5px solid #e5e7eb' }}>
               <button onClick={() => continueItem(selectedItem)}
                 style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg,#0ea5e9,#06b6d4)', color: 'white', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}>
-                {selectedItem.tags.includes('Landmark') ? '🏛️ View Landmark Again' :
-                 selectedItem.tags.includes('Voice') ? '🎤 Continue Voice Chat' :
-                 '💬 Continue Conversation'}
+                {selectedItem.tags.includes('Voice') ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+                      <line x1="2" y1="12" x2="2" y2="12"/>
+                      <line x1="6" y1="8" x2="6" y2="16"/>
+                      <line x1="10" y1="5" x2="10" y2="19"/>
+                      <line x1="14" y1="8" x2="14" y2="16"/>
+                      <line x1="18" y1="10" x2="18" y2="14"/>
+                      <line x1="22" y1="12" x2="22" y2="12"/>
+                    </svg>
+                    Continue Voice Conversation
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <MessageCircle style={{ width: '16px', height: '16px', color: 'white' }} />
+                    Continue Conversation
+                  </div>
+                )}
               </button>
             </div>
           </div>

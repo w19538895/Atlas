@@ -333,8 +333,18 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
     isAudioMutedRef.current = newVal
     setIsAudioMuted(newVal)
     if (newVal) {
-      window.speechSynthesis.cancel()
+      try {
+        if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+          audioCtxRef.current.suspend()
+        }
+      } catch {}
       setAvatarStatus('idle')
+    } else {
+      try {
+        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+          audioCtxRef.current.resume()
+        }
+      } catch {}
     }
   }
 

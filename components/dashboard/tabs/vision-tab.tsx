@@ -315,12 +315,14 @@ export function VisionTab({ onTabChange }: { onTabChange?: (tab: string) => void
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-foreground mb-2">Landmark Recognition</h2>
-        <p className="text-muted-foreground">
-          Upload a photo or use your camera to identify landmarks
-        </p>
-      </div>
+      {!uploadedImage && (
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold text-foreground mb-2">Landmark Recognition</h2>
+          <p className="text-muted-foreground">
+            Upload a photo or use your camera to identify landmarks
+          </p>
+        </div>
+      )}
 
       {!uploadedImage ? (
         /* Camera or Upload Zone */
@@ -336,18 +338,20 @@ export function VisionTab({ onTabChange }: { onTabChange?: (tab: string) => void
                     playsInline
                     className="w-full h-full object-cover"
                   />
-                  {/* Flip camera button */}
                   <button
                     onClick={flipCamera}
                     style={{
                       position: 'absolute', top: '10px', right: '10px',
-                      background: 'rgba(0,0,0,0.5)', border: 'none',
-                      borderRadius: '50%', width: '40px', height: '40px',
+                      background: 'rgba(0,0,0,0.45)',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '36px', height: '36px',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer', zIndex: 10
+                      cursor: 'pointer', zIndex: 10,
+                      backdropFilter: 'blur(4px)'
                     }}
                   >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M20 7h-9"/>
                       <path d="M14 17H5"/>
                       <circle cx="17" cy="17" r="3"/>

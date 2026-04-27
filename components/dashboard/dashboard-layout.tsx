@@ -121,10 +121,9 @@ export function DashboardLayout({ onLogout }: DashboardLayoutProps) {
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 text-xs text-muted-foreground">
             <MapPin className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">
-              {isLocating && "📍 Locating..."}
-              {locationError && "📍 Location off"}
-              {locationName && !isLocating && locationName}
-              {!locationName && !isLocating && !locationError && "📍 Location off"}
+              {isLocating && "Locating..."}
+              {!isLocating && locationError && "Location off"}
+              {!isLocating && !locationError && locationName && locationName}
             </span>
           </div>
 

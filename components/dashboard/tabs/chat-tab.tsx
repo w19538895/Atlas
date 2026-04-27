@@ -64,6 +64,22 @@ export function ChatTab({ onTabChange }: { onTabChange?: (tab: string) => void }
   const { latitude, longitude, locationName } = useLocation();
   const currentUser = auth.currentUser;
   const responseMode = useRef<'short' | 'detailed'>('short')
+  const [profilePicUrl, setProfilePicUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!currentUser) return
+    const loadPic = async () => {
+      try {
+        const { db } = await import('@/firebase.config')
+        const { doc, getDoc } = await import('firebase/firestore')
+        const snap = await getDoc(doc(db, 'userProfiles', (currentUser as any).uid))
+        if (snap.exists() && snap.data().profilePicUrl) {
+          setProfilePicUrl(snap.data().profilePicUrl)
+        }
+      } catch {}
+    }
+    loadPic()
+  }, [currentUser])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -523,9 +539,15 @@ export function ChatTab({ onTabChange }: { onTabChange?: (tab: string) => void }
             </div>
 
             {message.role === "user" && (
-              <Avatar className="w-8 h-8 shrink-0">
-                <AvatarFallback className="bg-accent text-accent-foreground">U</AvatarFallback>
-              </Avatar>
+              <div style={{ width: '32px', height: '32px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
+                {profilePicUrl ? (
+                  <img src={profilePicUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="User" />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', background: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '12px', fontWeight: 500 }}>
+                    {((currentUser as any)?.displayName || (currentUser as any)?.email || 'U').charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         ))}
@@ -579,9 +601,6 @@ export function ChatTab({ onTabChange }: { onTabChange?: (tab: string) => void }
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
               <span className="text-xs text-muted-foreground">{input.length}/500</span>
-              <Button type="button" variant="ghost" size="icon" className="h-7 w-7">
-                <Mic className="w-4 h-4 text-muted-foreground" />
-              </Button>
             </div>
           </div>
           <Button type="submit" disabled={!input.trim() || isTyping}>

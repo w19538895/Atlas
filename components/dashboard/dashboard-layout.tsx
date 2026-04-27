@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -47,8 +47,24 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ onLogout }: DashboardLayoutProps) {
   const [activeTab, setActiveTab] = useState<TabId>("home");
+  const [profilePicUrl, setProfilePicUrl] = useState<string | null>(null);
   const { user } = useAuth();
   const { locationName, isLocating, locationError } = useLocation();
+
+  useEffect(() => {
+    if (!user) return;
+    const loadPic = async () => {
+      try {
+        const { db } = await import('@/firebase.config');
+        const { doc, getDoc } = await import('firebase/firestore');
+        const snap = await getDoc(doc(db, 'userProfiles', (user as any).uid));
+        if (snap.exists() && snap.data().profilePicUrl) {
+          setProfilePicUrl(snap.data().profilePicUrl);
+        }
+      } catch {}
+    };
+    loadPic();
+  }, [user]);
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -114,15 +130,20 @@ export function DashboardLayout({ onLogout }: DashboardLayoutProps) {
 
           {/* User Profile */}
           <div className="flex items-center gap-3 p-3 rounded-xl bg-muted">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={user?.avatar || "/placeholder.svg"} />
-              <AvatarFallback className="bg-primary text-primary-foreground">
-                {user?.name?.charAt(0).toUpperCase() || "U"}
-              </AvatarFallback>
-            </Avatar>
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
+              {profilePicUrl ? (
+                <img src={profilePicUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Profile" />
+              ) : (
+                <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg,#0ea5e9,#06b6d4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '14px', fontWeight: 500 }}>
+                  {((user as any)?.displayName || (user as any)?.email || 'U').charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{user?.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              <p className="text-sm font-medium text-foreground truncate">{(user as any)?.displayName || (user as any)?.email || 'Traveler'}</p>
+              <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {(user as any)?.email || 'No email'}
+              </span>
             </div>
           </div>
         </div>
@@ -146,26 +167,25 @@ export function DashboardLayout({ onLogout }: DashboardLayoutProps) {
 
             {/* Right Actions */}
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5 text-muted-foreground" />
-                <span className="absolute top-2 right-2 h-2 w-2 bg-accent rounded-full" />
-              </Button>
-
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={user?.avatar || "/placeholder.svg"} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                        {user?.name?.charAt(0).toUpperCase() || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
+                  <div
+                    onClick={() => setActiveTab('profile')}
+                    style={{ width: '28px', height: '28px', borderRadius: '50%', overflow: 'hidden', cursor: 'pointer', flexShrink: 0 }}
+                  >
+                    {profilePicUrl ? (
+                      <img src={profilePicUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Profile" />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg,#0ea5e9,#06b6d4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px', fontWeight: 500 }}>
+                        {((user as any)?.displayName || (user as any)?.email || 'U').charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <div className="px-3 py-2">
-                    <p className="text-sm font-medium text-foreground">{user?.name}</p>
-                    <p className="text-xs text-muted-foreground">{user?.email}</p>
+                    <p className="text-sm font-medium text-foreground">{(user as any)?.displayName || (user as any)?.email || 'Traveler'}</p>
+                    <p className="text-xs text-muted-foreground">{(user as any)?.email || 'No email'}</p>
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setActiveTab("profile")}>

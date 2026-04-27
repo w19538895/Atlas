@@ -236,7 +236,6 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
       const reply = data.message || ''
       const aiMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: reply, timestamp: new Date() }
       const final = [...updated, aiMsg]
-      setMessages(final)
 
       if (!isAudioMutedRef.current) {
         try {
@@ -258,13 +257,17 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
           const source = audioCtxRef.current.createBufferSource()
           source.buffer = audioBuffer
           source.connect(audioCtxRef.current.destination)
+          // Show text and start audio at the same time
+          setMessages(final)
           setAvatarStatus('speaking')
           source.start(0)
           source.onended = () => { setAvatarStatus('idle') }
         } catch {
+          setMessages(final)
           setAvatarStatus('idle')
         }
       } else {
+        setMessages(final)
         setAvatarStatus('idle')
       }
 
@@ -463,7 +466,7 @@ export function HomeTab({ onTabChange }: { onTabChange?: (tab: string) => void }
       </div>
 
       {/* RIGHT — Content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '16px', minWidth: 0, overflowY: 'auto', paddingBottom: '80px' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '16px', minWidth: 0, paddingBottom: '100px' }}>
 
         <div>
           <h2 style={{ fontSize: '18px', fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: '5px' }}>Your Personal Tour Guide</h2>

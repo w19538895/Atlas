@@ -551,7 +551,7 @@ export function VisionTab({ onTabChange }: { onTabChange?: (tab: string) => void
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-wrap gap-3 justify-center" style={{ paddingBottom: '80px' }}>
+              <div className="flex flex-wrap gap-3 justify-center" style={{ paddingBottom: '120px' }}>
                 <Button className="flex-1 sm:flex-none" onClick={handleChatAbout}>
                   <MessageCircle className="w-4 h-4 mr-2" />
                   Chat about this

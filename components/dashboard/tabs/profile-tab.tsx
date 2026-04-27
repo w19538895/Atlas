@@ -251,7 +251,7 @@ export function ProfileTab() {
 
   return (
     <>
-    <div style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', paddingBottom: '80px', width: '100%', boxSizing: 'border-box' }}>
+    <div style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden', paddingBottom: '140px', width: '100%', boxSizing: 'border-box' }}>
       <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px 24px', boxSizing: 'border-box', width: '100%' }}>
 
         {/* Profile Header */}

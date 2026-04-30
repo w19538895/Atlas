@@ -11,7 +11,6 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: 'Atlas - AI Travel Companion',
   description: 'AI-powered travel companion for landmark recognition, personalized recommendations, and immersive exploration',
-  generator: 'v0.app',
   icons: {
     icon: '/Atlas.png',
     apple: '/Atlas.png',

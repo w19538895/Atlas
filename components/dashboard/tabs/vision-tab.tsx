@@ -33,29 +33,6 @@ interface AnalysisResult {
   error?: string;
 }
 
-const mockAnalysis: AnalysisResult = {
-  name: "Eiffel Tower",
-  location: "Champ de Mars, Paris, France",
-  historicalFacts: [
-    "Built between 1887-1889 for the 1889 World's Fair",
-    "Named after engineer Gustave Eiffel, whose company designed the structure",
-    "Was the world's tallest man-made structure for 41 years",
-    "Originally intended to be dismantled after 20 years",
-  ],
-  interestingDetails: [
-    "The tower is 330 meters tall, including antennas",
-    "It contains 18,000 metallic parts and 2.5 million rivets",
-    "The tower was painted brown at first, not its current bronze color",
-    "It grows up to 15 cm taller during hot summer days due to thermal expansion",
-  ],
-  travelTips: [
-    "Book tickets online in advance to avoid long queues",
-    "Visit at sunset for the best photo opportunities",
-    "The second floor offers the best views for most visitors",
-    "Try the restaurants on the tower for a unique dining experience",
-  ],
-};
-
 export function VisionTab({ onTabChange }: { onTabChange?: (tab: string) => void }) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
